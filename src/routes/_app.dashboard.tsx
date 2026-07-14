@@ -59,11 +59,11 @@ function Dashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild><Link to="/"><Plus className="h-4 w-4 mr-1.5" /> New Bill</Link></Button>
-          <Button variant="outline"><Truck className="h-4 w-4 mr-1.5" /> Purchase</Button>
-          <Button variant="outline"><Pill className="h-4 w-4 mr-1.5" /> Add Medicine</Button>
-          <Button variant="outline"><UserPlus className="h-4 w-4 mr-1.5" /> Customer</Button>
-          <Button variant="outline"><Printer className="h-4 w-4 mr-1.5" /> Reports</Button>
-          <Button variant="outline"><DatabaseBackup className="h-4 w-4 mr-1.5" /> Backup</Button>
+          <Button asChild variant="outline"><Link to="/purchase"><Truck className="h-4 w-4 mr-1.5" /> Purchase</Link></Button>
+          <Button asChild variant="outline"><Link to="/medicines"><Pill className="h-4 w-4 mr-1.5" /> Add Medicine</Link></Button>
+          <Button asChild variant="outline"><Link to="/customers"><UserPlus className="h-4 w-4 mr-1.5" /> Customer</Link></Button>
+          <Button asChild variant="outline"><Link to="/reports"><Printer className="h-4 w-4 mr-1.5" /> Reports</Link></Button>
+          <Button asChild variant="outline"><Link to="/backup"><DatabaseBackup className="h-4 w-4 mr-1.5" /> Backup</Link></Button>
         </div>
       </div>
 

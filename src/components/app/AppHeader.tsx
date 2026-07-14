@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2 } from "lucide-react";
+import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,29 +10,48 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getUser, logout } from "@/lib/auth";
 import { toast } from "sonner";
+import { SidebarBrand, SidebarNav } from "./AppSidebar";
 
 export function AppHeader() {
-  const [user, setUser] = useState(() => getUser());
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [name, setName] = useState(user?.name ?? "");
+  const [name, setName] = useState("");
   const navigate = useNavigate();
 
-  const initials = (user?.name ?? "U")
+  useEffect(() => {
+    const u = getUser();
+    setUser(u);
+    setName(u?.name ?? "");
+  }, []);
+
+  const initials = (user?.name ?? "  ")
     .split(" ")
     .map((s) => s[0])
     .slice(0, 2)
-    .join("");
+    .join("") || " ";
 
   return (
-    <header className="h-16 shrink-0 border-b bg-card flex items-center gap-3 px-4 lg:px-6">
+    <header className="h-16 shrink-0 border-b bg-card flex items-center gap-2 px-3 lg:px-6">
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="lg:hidden">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-64 flex flex-col">
+          <SidebarBrand />
+          <SidebarNav />
+        </SheetContent>
+      </Sheet>
       <div className="relative flex-1 max-w-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Global search — medicines, invoices, customers…  (Ctrl+K)"
+          placeholder="Global search — medicines, invoices, customers…"
           className="pl-9 h-10 bg-background"
         />
       </div>
