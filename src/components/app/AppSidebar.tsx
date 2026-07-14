@@ -24,7 +24,7 @@ export const NAV = [
   { to: "/qr", label: "QR Code", icon: QrCode },
   { to: "/settings", label: "Settings", icon: Settings },
   { to: "/backup", label: "Backup", icon: DatabaseBackup },
-] as const;
+] as { to: string; label: string; icon: any; highlight?: boolean }[];
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const path = useRouterState({ select: (s) => s.location.pathname });

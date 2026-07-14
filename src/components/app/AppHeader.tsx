@@ -36,11 +36,22 @@ export function AppHeader() {
     .join("") || " ";
 
   return (
-    <header className="h-16 shrink-0 border-b bg-card flex items-center gap-3 px-4 lg:px-6">
+    <header className="h-16 shrink-0 border-b bg-card flex items-center gap-2 px-3 lg:px-6">
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="lg:hidden">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-64 flex flex-col">
+          <SidebarBrand />
+          <SidebarNav />
+        </SheetContent>
+      </Sheet>
       <div className="relative flex-1 max-w-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Global search — medicines, invoices, customers…  (Ctrl+K)"
+          placeholder="Global search — medicines, invoices, customers…"
           className="pl-9 h-10 bg-background"
         />
       </div>
