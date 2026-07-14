@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Construction, ArrowLeft } from "lucide-react";
@@ -14,17 +13,11 @@ export function StubPage({ title, desc }: { title: string; desc: string }) {
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">{desc}</p>
         <Button asChild className="mt-6" variant="outline">
-          <Link to="/"><ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Billing</Link>
+          <Link to="/">
+            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Billing
+          </Link>
         </Button>
       </Card>
     </div>
   );
 }
-
-// Placeholder for TS route imports — real routes live in sibling files.
-export const _StubShared = StubPage;
-
-// This module is imported by other route files; expose a no-op route to satisfy generator if picked up.
-export const Route = createFileRoute("/_app")({
-  component: () => null as any,
-} as any);
