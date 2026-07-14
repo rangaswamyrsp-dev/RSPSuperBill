@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search, ScanBarcode, QrCode, Plus, Trash2, Save, Printer, PauseCircle, X,
-  Percent, Keyboard, User, Phone, Stethoscope,
+  Percent, Keyboard, User, Phone, Stethoscope, UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +14,11 @@ import {
 } from "@/components/ui/table";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { MEDICINES, type Medicine } from "@/data/medicines";
+import type { Medicine } from "@/data/medicines";
 import { cn } from "@/lib/utils";
+import { actions, useStore, useHydrated } from "@/lib/store";
+import { printReceipt } from "@/lib/print";
+import { BarcodeScanner } from "@/components/app/BarcodeScanner";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({
@@ -34,20 +37,33 @@ function invoiceNo() {
 }
 
 function BillingPage() {
+  const hydrated = useHydrated();
+  const medicines = useStore((s) => s.medicines);
+  const customers = useStore((s) => s.customers);
+  const printer = useStore((s) => s.printer);
+
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<LineItem[]>([]);
   const [customer, setCustomer] = useState({ name: "", phone: "", doctor: "" });
+  const [matched, setMatched] = useState<string | null>(null);
   const [payment, setPayment] = useState("cash");
-  const [inv, setInv] = useState(invoiceNo);
-  const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const [inv, setInv] = useState("INV—");
+  const [scanOpen, setScanOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+
+  useEffect(() => { setInv(invoiceNo()); }, []);
+
+  const today = hydrated
+    ? new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+    : "";
 
   const suggestions = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return MEDICINES.filter(
-      (m) => m.name.toLowerCase().includes(q) || m.batch.toLowerCase().includes(q),
-    ).slice(0, 6);
-  }, [query]);
+    return medicines
+      .filter((m) => m.name.toLowerCase().includes(q) || m.batch.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [query, medicines]);
 
   const addItem = (m: Medicine) => {
     setItems((prev) => {
@@ -58,9 +74,33 @@ function BillingPage() {
     setQuery("");
   };
 
+  const onScan = (code: string) => {
+    const found = medicines.find(
+      (m) => m.id.toLowerCase() === code.toLowerCase() || m.batch.toLowerCase() === code.toLowerCase(),
+    );
+    if (found) {
+      addItem(found);
+      toast.success(`Added ${found.name}`);
+    } else {
+      setQuery(code);
+      toast(`Scanned: ${code} — search opened`);
+    }
+  };
+
   const updateItem = (id: string, patch: Partial<LineItem>) =>
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
+
+  const onPhoneChange = (phone: string) => {
+    setCustomer((c) => ({ ...c, phone }));
+    const found = customers.find((c) => c.phone === phone.trim());
+    if (found) {
+      setCustomer((c) => ({ ...c, name: found.name, doctor: found.doctor ?? c.doctor, phone }));
+      setMatched(found.id);
+    } else {
+      setMatched(null);
+    }
+  };
 
   const totals = useMemo(() => {
     let sub = 0, disc = 0, gst = 0;
@@ -81,13 +121,51 @@ function BillingPage() {
   const clear = () => {
     setItems([]);
     setCustomer({ name: "", phone: "", doctor: "" });
+    setMatched(null);
     setInv(invoiceNo());
     setPayment("cash");
   };
 
+  const buildSale = () => {
+    const cust = actions.upsertCustomerByPhone({
+      name: customer.name, phone: customer.phone, doctor: customer.doctor,
+    });
+    return actions.saveSale({
+      customerId: cust.phone ? cust.id : null,
+      customerName: cust.name,
+      phone: cust.phone,
+      doctor: customer.doctor || undefined,
+      items: items.map((it) => {
+        const line = it.mrp * it.qty;
+        const d = (line * it.discount) / 100;
+        const tax = ((line - d) * it.gst) / 100;
+        return {
+          id: it.id, name: it.name, batch: it.batch, qty: it.qty,
+          mrp: it.mrp, gst: it.gst, discount: it.discount,
+          total: +(line - d + tax).toFixed(2),
+        };
+      }),
+      sub: +totals.sub.toFixed(2),
+      disc: +totals.disc.toFixed(2),
+      gst: +totals.gst.toFixed(2),
+      grand: totals.grand,
+      payment,
+    });
+  };
+
   const saveBill = () => {
     if (items.length === 0) return toast.error("Add at least one medicine");
-    toast.success(`Bill ${inv} saved · ₹${totals.grand.toLocaleString("en-IN")}`);
+    const sale = buildSale();
+    toast.success(`Bill ${sale.id} saved · ₹${totals.grand.toLocaleString("en-IN")}`);
+    if (printer.autoPrint) printReceipt(sale, printer);
+    clear();
+  };
+
+  const printBill = () => {
+    if (items.length === 0) return toast.error("Add at least one medicine");
+    const sale = buildSale();
+    printReceipt(sale, printer);
+    toast.success(`Bill ${sale.id} · sent to printer`);
     clear();
   };
 
@@ -109,7 +187,7 @@ function BillingPage() {
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Date</div>
-              <div className="font-medium">{today}</div>
+              <div className="font-medium">{today || "—"}</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Counter</div>
@@ -122,7 +200,31 @@ function BillingPage() {
 
           <div className="grid gap-3 sm:grid-cols-3 mt-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">Customer</Label>
+              <Label className="text-xs">Phone (auto-links customer)</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="+91"
+                  value={customer.phone}
+                  onChange={(e) => onPhoneChange(e.target.value)}
+                />
+                {matched && (
+                  <UserCheck className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                )}
+              </div>
+              {matched ? (
+                <div className="text-[11px] text-primary flex items-center gap-1">
+                  <UserCheck className="h-3 w-3" /> Existing customer linked
+                </div>
+              ) : customer.phone.trim() ? (
+                <div className="text-[11px] text-[color:var(--info)]">New customer — will be created</div>
+              ) : (
+                <div className="text-[11px] text-muted-foreground">Walk-in if empty</div>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Customer name</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -130,18 +232,6 @@ function BillingPage() {
                   placeholder="Walk-in customer"
                   value={customer.name}
                   onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Phone</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="+91"
-                  value={customer.phone}
-                  onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
                 />
               </div>
             </div>
@@ -162,13 +252,13 @@ function BillingPage() {
 
         {/* Search */}
         <Card className="p-4">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[220px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 autoFocus
                 className="pl-9 h-11 text-base"
-                placeholder="Search medicine name, salt or batch…"
+                placeholder="Search medicine name, salt, batch or scan…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -176,10 +266,10 @@ function BillingPage() {
                 }}
               />
             </div>
-            <Button variant="outline" className="h-11" onClick={() => toast("Point scanner at barcode")}>
+            <Button variant="outline" className="h-11" onClick={() => setScanOpen(true)}>
               <ScanBarcode className="h-4 w-4 mr-1.5" /> Barcode
             </Button>
-            <Button variant="outline" className="h-11" onClick={() => toast("Open QR scanner")}>
+            <Button variant="outline" className="h-11" onClick={() => setQrOpen(true)}>
               <QrCode className="h-4 w-4 mr-1.5" /> QR
             </Button>
           </div>
@@ -220,6 +310,7 @@ function BillingPage() {
 
         {/* Line items */}
         <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -298,6 +389,7 @@ function BillingPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </Card>
       </div>
 
@@ -348,8 +440,8 @@ function BillingPage() {
           <Button className="h-11" onClick={saveBill}>
             <Save className="h-4 w-4 mr-1.5" /> Save Bill
           </Button>
-          <Button variant="outline" className="h-11" onClick={() => toast("Sent to printer")}>
-            <Printer className="h-4 w-4 mr-1.5" /> Print
+          <Button variant="outline" className="h-11" onClick={printBill}>
+            <Printer className="h-4 w-4 mr-1.5" /> Save & Print
           </Button>
           <Button variant="outline" className="h-11" onClick={() => toast("Bill held")}>
             <PauseCircle className="h-4 w-4 mr-1.5" /> Hold
@@ -363,14 +455,17 @@ function BillingPage() {
           <div className="flex items-start gap-2 text-sm">
             <Percent className="h-4 w-4 mt-0.5 text-[color:var(--warning)]" />
             <div>
-              <div className="font-medium">GST auto-applied per medicine</div>
+              <div className="font-medium">Printer: {printer.paperSize} thermal</div>
               <div className="text-muted-foreground text-xs mt-0.5">
-                Rates are pulled from Medicine Master. Change in Settings → GST.
+                Change paper size, header and footer in Settings → Printer.
               </div>
             </div>
           </div>
         </Card>
       </div>
+
+      <BarcodeScanner open={scanOpen} onOpenChange={setScanOpen} onDetected={onScan} mode="barcode" />
+      <BarcodeScanner open={qrOpen} onOpenChange={setQrOpen} onDetected={onScan} mode="qr" />
     </div>
   );
 }
@@ -393,3 +488,4 @@ function Row({
     </div>
   );
 }
+

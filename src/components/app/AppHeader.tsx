@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -16,16 +16,22 @@ import { getUser, logout } from "@/lib/auth";
 import { toast } from "sonner";
 
 export function AppHeader() {
-  const [user, setUser] = useState(() => getUser());
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [name, setName] = useState(user?.name ?? "");
+  const [name, setName] = useState("");
   const navigate = useNavigate();
 
-  const initials = (user?.name ?? "U")
+  useEffect(() => {
+    const u = getUser();
+    setUser(u);
+    setName(u?.name ?? "");
+  }, []);
+
+  const initials = (user?.name ?? "  ")
     .split(" ")
     .map((s) => s[0])
     .slice(0, 2)
-    .join("");
+    .join("") || " ";
 
   return (
     <header className="h-16 shrink-0 border-b bg-card flex items-center gap-3 px-4 lg:px-6">
