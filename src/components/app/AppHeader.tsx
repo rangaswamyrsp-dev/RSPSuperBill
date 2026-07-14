@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2 } from "lucide-react";
+import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,10 +10,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getUser, logout } from "@/lib/auth";
 import { toast } from "sonner";
+import { SidebarBrand, SidebarNav } from "./AppSidebar";
 
 export function AppHeader() {
   const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
