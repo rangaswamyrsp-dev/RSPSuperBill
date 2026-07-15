@@ -20,12 +20,14 @@ import { Route as AppQrRouteImport } from './routes/_app.qr'
 import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
 import { Route as AppMedicinesRouteImport } from './routes/_app.medicines'
 import { Route as AppInventoryRouteImport } from './routes/_app.inventory'
+import { Route as AppHelpRouteImport } from './routes/_app.help'
 import { Route as AppGstRouteImport } from './routes/_app.gst'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCustomersRouteImport } from './routes/_app.customers'
 import { Route as AppBarcodeRouteImport } from './routes/_app.barcode'
 import { Route as AppBackupRouteImport } from './routes/_app.backup'
+import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppAccountsRouteImport } from './routes/_app.accounts'
 
 const LoginRoute = LoginRouteImport.update({
@@ -82,6 +84,11 @@ const AppInventoryRoute = AppInventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHelpRoute = AppHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppGstRoute = AppGstRouteImport.update({
   id: '/gst',
   path: '/gst',
@@ -112,6 +119,11 @@ const AppBackupRoute = AppBackupRouteImport.update({
   path: '/backup',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountsRoute = AppAccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -122,12 +134,14 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/accounts': typeof AppAccountsRoute
+  '/audit': typeof AppAuditRoute
   '/backup': typeof AppBackupRoute
   '/barcode': typeof AppBarcodeRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/employees': typeof AppEmployeesRoute
   '/gst': typeof AppGstRoute
+  '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
   '/medicines': typeof AppMedicinesRoute
   '/purchase': typeof AppPurchaseRoute
@@ -140,12 +154,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/accounts': typeof AppAccountsRoute
+  '/audit': typeof AppAuditRoute
   '/backup': typeof AppBackupRoute
   '/barcode': typeof AppBarcodeRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/employees': typeof AppEmployeesRoute
   '/gst': typeof AppGstRoute
+  '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
   '/medicines': typeof AppMedicinesRoute
   '/purchase': typeof AppPurchaseRoute
@@ -161,12 +177,14 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/accounts': typeof AppAccountsRoute
+  '/_app/audit': typeof AppAuditRoute
   '/_app/backup': typeof AppBackupRoute
   '/_app/barcode': typeof AppBarcodeRoute
   '/_app/customers': typeof AppCustomersRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/gst': typeof AppGstRoute
+  '/_app/help': typeof AppHelpRoute
   '/_app/inventory': typeof AppInventoryRoute
   '/_app/medicines': typeof AppMedicinesRoute
   '/_app/purchase': typeof AppPurchaseRoute
@@ -183,12 +201,14 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/accounts'
+    | '/audit'
     | '/backup'
     | '/barcode'
     | '/customers'
     | '/dashboard'
     | '/employees'
     | '/gst'
+    | '/help'
     | '/inventory'
     | '/medicines'
     | '/purchase'
@@ -201,12 +221,14 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/accounts'
+    | '/audit'
     | '/backup'
     | '/barcode'
     | '/customers'
     | '/dashboard'
     | '/employees'
     | '/gst'
+    | '/help'
     | '/inventory'
     | '/medicines'
     | '/purchase'
@@ -221,12 +243,14 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/accounts'
+    | '/_app/audit'
     | '/_app/backup'
     | '/_app/barcode'
     | '/_app/customers'
     | '/_app/dashboard'
     | '/_app/employees'
     | '/_app/gst'
+    | '/_app/help'
     | '/_app/inventory'
     | '/_app/medicines'
     | '/_app/purchase'
@@ -322,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInventoryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/help': {
+      id: '/_app/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof AppHelpRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/gst': {
       id: '/_app/gst'
       path: '/gst'
@@ -364,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBackupRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounts': {
       id: '/_app/accounts'
       path: '/accounts'
@@ -376,12 +414,14 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAccountsRoute: typeof AppAccountsRoute
+  AppAuditRoute: typeof AppAuditRoute
   AppBackupRoute: typeof AppBackupRoute
   AppBarcodeRoute: typeof AppBarcodeRoute
   AppCustomersRoute: typeof AppCustomersRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppGstRoute: typeof AppGstRoute
+  AppHelpRoute: typeof AppHelpRoute
   AppInventoryRoute: typeof AppInventoryRoute
   AppMedicinesRoute: typeof AppMedicinesRoute
   AppPurchaseRoute: typeof AppPurchaseRoute
@@ -395,12 +435,14 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountsRoute: AppAccountsRoute,
+  AppAuditRoute: AppAuditRoute,
   AppBackupRoute: AppBackupRoute,
   AppBarcodeRoute: AppBarcodeRoute,
   AppCustomersRoute: AppCustomersRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppGstRoute: AppGstRoute,
+  AppHelpRoute: AppHelpRoute,
   AppInventoryRoute: AppInventoryRoute,
   AppMedicinesRoute: AppMedicinesRoute,
   AppPurchaseRoute: AppPurchaseRoute,
@@ -421,13 +463,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
