@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Search, ScanBarcode, QrCode, Plus, Trash2, Save, Printer, PauseCircle, X,
-  Percent, Keyboard, User, Phone, Stethoscope, UserCheck,
+  Percent, Keyboard, User, Phone, Stethoscope, UserCheck, PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import type { Medicine } from "@/data/medicines";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { actions, useStore, useHydrated } from "@/lib/store";
 import { printReceipt } from "@/lib/print";
 import { BarcodeScanner } from "@/components/app/BarcodeScanner";
+import { getUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({
