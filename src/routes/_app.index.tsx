@@ -203,7 +203,6 @@ function BillingPage() {
     })));
     toast.success(`Resumed held bill ${id}`);
   };
-  };
 
   return (
     <div className="p-4 lg:p-6 grid gap-4 xl:grid-cols-[1fr_360px]">
