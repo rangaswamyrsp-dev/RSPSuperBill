@@ -22,6 +22,9 @@ function SalesPage() {
   const sales = useStore((s) => s.sales);
   const printer = useStore((s) => s.printer);
   const [query, setQuery] = useState("");
+  const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => setMe(getUser()), []);
+  const canCancel = me ? CAN[me.role].cancelBill : false;
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
