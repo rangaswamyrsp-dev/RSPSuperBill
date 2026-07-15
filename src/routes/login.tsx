@@ -5,27 +5,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
-import { Stethoscope, Pill, ShieldCheck, Zap } from "lucide-react";
+import { Stethoscope, Pill, ShieldCheck, Zap, Phone } from "lucide-react";
 import { login, getUser, DEMO_CREDENTIALS } from "@/lib/auth";
+import { actions } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: () => {
-    if (typeof window !== "undefined" && getUser()) {
-      throw redirect({ to: "/" });
-    }
+    if (typeof window !== "undefined" && getUser()) throw redirect({ to: "/" });
   },
   head: () => ({
     meta: [
       { title: "Sign in · RSP Medical Billing" },
-      { name: "description", content: "Secure login for ANAM Medical Store staff to access RSP Billing." },
+      { name: "description", content: "Role-based login for ANAM Medical Store staff." },
     ],
   }),
   component: LoginPage,
 });
 
 function LoginPage() {
-  const [email, setEmail] = useState(DEMO_CREDENTIALS.email);
+  const [phone, setPhone] = useState(DEMO_CREDENTIALS.phone);
   const [password, setPassword] = useState(DEMO_CREDENTIALS.password);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -35,20 +34,20 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setTimeout(() => {
-      const u = login(email, password, remember);
+      const u = login(phone, password, remember);
       setLoading(false);
       if (u) {
-        toast.success(`Welcome back, ${u.name}`);
+        actions.logLogin({ id: u.id, name: u.name });
+        toast.success(`Welcome, ${u.name} · ${u.role}`);
         navigate({ to: "/" });
       } else {
-        toast.error("Invalid credentials");
+        toast.error("Invalid phone or password");
       }
-    }, 400);
+    }, 300);
   };
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
-      {/* Left illustration */}
       <div className="hidden lg:flex relative overflow-hidden bg-gradient-to-br from-[color:var(--info)] via-[color:var(--info)] to-primary text-white p-12 flex-col justify-between">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-white/15 backdrop-blur grid place-items-center">
@@ -65,18 +64,17 @@ function LoginPage() {
           <div className="absolute top-32 right-0 h-56 w-56 rounded-full bg-[color:var(--warning)]/40 blur-3xl" />
           <div className="relative">
             <h1 className="text-4xl xl:text-5xl font-semibold leading-tight tracking-tight">
-              Fast, reliable billing for busy medical stores.
+              Role-based billing for your whole team.
             </h1>
             <p className="mt-4 text-white/80 max-w-md">
-              Barcode-ready billing, live stock, GST reports and multi-branch inventory — all
-              in one keyboard-friendly workspace.
+              Admin, Manager, Pharmacist and Cashier — each staff logs in with their phone number
+              and every bill is tied to their Employee ID.
             </p>
-
             <div className="mt-10 grid grid-cols-3 gap-3 max-w-md">
               {[
                 { icon: Zap, label: "Bill in 20s" },
-                { icon: Pill, label: "10k+ SKUs" },
-                { icon: ShieldCheck, label: "GST ready" },
+                { icon: Pill, label: "FEFO stock" },
+                { icon: ShieldCheck, label: "Audit trail" },
               ].map((f) => (
                 <div key={f.label} className="rounded-xl bg-white/10 backdrop-blur p-4">
                   <f.icon className="h-5 w-5 mb-2" />
@@ -86,11 +84,9 @@ function LoginPage() {
             </div>
           </div>
         </div>
-
-        <div className="text-xs text-white/60">Version 1.0 · © 2026 RSP Software</div>
+        <div className="text-xs text-white/60">Version 1.1 · © 2026 RSP Software</div>
       </div>
 
-      {/* Right form */}
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex items-center gap-2">
@@ -102,42 +98,40 @@ function LoginPage() {
 
           <h2 className="text-2xl font-semibold tracking-tight">Sign in to continue</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Enter your credentials to access the billing workspace.
+            Use your phone number and password given by the admin.
           </p>
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email / Username</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <Label htmlFor="phone">Phone (User ID)</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="phone"
+                  className="pl-9"
+                  inputMode="tel"
+                  autoComplete="username"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
               <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                id="password" type="password" autoComplete="current-password"
+                value={password} onChange={(e) => setPassword(e.target.value)} required
               />
             </div>
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 cursor-pointer">
-                <Checkbox
-                  checked={remember}
-                  onCheckedChange={(v) => setRemember(v === true)}
-                />
+                <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
                 Remember me
               </label>
-              <button type="button" className="text-[color:var(--info)] hover:underline">
+              <button type="button" className="text-[color:var(--info)] hover:underline"
+                onClick={() => toast("Ask the Admin (Manjju) to reset your password.")}>
                 Forgot password?
               </button>
             </div>
@@ -148,11 +142,12 @@ function LoginPage() {
           </form>
 
           <Card className="mt-6 p-3 bg-muted/50 border-dashed text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Demo login:</span>{" "}
-            {DEMO_CREDENTIALS.email} · {DEMO_CREDENTIALS.password}
+            <div><span className="font-medium text-foreground">Admin demo:</span> {DEMO_CREDENTIALS.phone} · {DEMO_CREDENTIALS.password}</div>
+            <div className="mt-1"><span className="font-medium text-foreground">Cashier demo:</span> 9876543211 · cashier1</div>
+            <div><span className="font-medium text-foreground">Pharmacist demo:</span> 9876543212 · pharma1</div>
           </Card>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">Version 1.0</p>
+          <p className="mt-6 text-center text-xs text-muted-foreground">Version 1.1</p>
         </div>
       </div>
     </div>

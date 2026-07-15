@@ -30,7 +30,7 @@ export function receiptHTML(sale: Sale, p: PrinterSettings): string {
 <html><head><meta charset="utf-8"><title>${escape(sale.id)}</title>
 <style>
   @page { size: ${width} auto; margin: 4mm; }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: ${isThermal ? '"Courier New", monospace' : "Arial, sans-serif"}; font-size: ${isThermal ? "11px" : "12px"}; color:#000; margin:0; padding:0; width: ${width}; }
   .wrap { padding: 4px 6px; }
   .center { text-align:center; }
@@ -64,6 +64,7 @@ export function receiptHTML(sale: Sale, p: PrinterSettings): string {
     </div>
     <div>Customer: <b>${escape(sale.customerName || "Walk-in")}</b>${sale.phone ? " · " + escape(sale.phone) : ""}</div>
     ${sale.doctor ? `<div>Doctor: ${escape(sale.doctor)}</div>` : ""}
+    ${sale.cashierId ? `<div>Cashier: <b>${escape(sale.cashierId)}</b>${sale.cashierName ? " · " + escape(sale.cashierName) : ""}</div>` : ""}
     <hr/>
     <table>
       <thead><tr><th class="l">Item</th><th class="c">Qty</th><th class="r">MRP</th><th class="r">Total</th></tr></thead>
@@ -88,27 +89,13 @@ export function printReceipt(sale: Sale, p: PrinterSettings) {
   const html = receiptHTML(sale, p);
   const w = window.open("", "_blank", "width=380,height=640");
   if (!w) {
-    // Popup blocked — fallback to iframe
     const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
+    iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
     document.body.appendChild(iframe);
     const doc = iframe.contentDocument!;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-      setTimeout(() => iframe.remove(), 2000);
-    }, 300);
+    doc.open(); doc.write(html); doc.close();
+    setTimeout(() => { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); setTimeout(() => iframe.remove(), 2000); }, 300);
     return;
   }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  w.document.open(); w.document.write(html); w.document.close();
 }

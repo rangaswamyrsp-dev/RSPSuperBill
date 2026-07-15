@@ -28,6 +28,9 @@ export type Employee = {
   role: string;
   phone: string;
   salary: number;
+  password?: string;
+  active?: boolean;
+  createdAt?: string;
 };
 
 export type SaleItem = {
@@ -55,6 +58,8 @@ export type Sale = {
   grand: number;
   payment: string;
   status: "paid" | "held" | "cancelled";
+  cashierId?: string;
+  cashierName?: string;
 };
 
 export type Purchase = {
@@ -77,6 +82,26 @@ export type PrinterSettings = {
   showLogo: boolean;
   copies: number;
   autoPrint: boolean;
+};
+
+export type AuditEntry = {
+  id: string;
+  at: string;
+  actor: string;        // "E001 · Manjju"
+  action: "bill.save" | "bill.cancel" | "bill.hold" | "bill.resume" | "stock.adjust" | "medicine.add" | "medicine.update" | "medicine.delete" | "employee.add" | "employee.delete" | "purchase.add" | "login";
+  target?: string;
+  detail?: string;
+};
+
+export type HeldBill = {
+  id: string;
+  at: string;
+  customerName: string;
+  phone: string;
+  doctor?: string;
+  items: { id: string; name: string; batch: string; qty: number; mrp: number; gst: number; discount: number; company?: string }[];
+  cashierId?: string;
+  cashierName?: string;
 };
 
 const DEFAULT_PRINTER: PrinterSettings = {
@@ -106,9 +131,9 @@ const SEED_SUPPLIERS: Supplier[] = [
 ];
 
 const SEED_EMPLOYEES: Employee[] = [
-  { id: "E001", name: "Manjju", role: "Admin", phone: "9876543210", salary: 35000 },
-  { id: "E002", name: "Ramesh", role: "Cashier", phone: "9876543211", salary: 18000 },
-  { id: "E003", name: "Lakshmi", role: "Pharmacist", phone: "9876543212", salary: 22000 },
+  { id: "E001", name: "Manjju", role: "Admin", phone: "9876543210", salary: 35000, password: "anam@2026", active: true, createdAt: "2026-01-01" },
+  { id: "E002", name: "Ramesh", role: "Cashier", phone: "9876543211", salary: 18000, password: "cashier1", active: true, createdAt: "2026-02-01" },
+  { id: "E003", name: "Lakshmi", role: "Pharmacist", phone: "9876543212", salary: 22000, password: "pharma1", active: true, createdAt: "2026-02-01" },
 ];
 
 const SEED_PURCHASES: Purchase[] = [
@@ -134,6 +159,8 @@ type State = {
   sales: Sale[];
   purchases: Purchase[];
   printer: PrinterSettings;
+  audit: AuditEntry[];
+  held: HeldBill[];
 };
 
 const KEY = "rsp_store_v1";
@@ -146,6 +173,8 @@ const DEFAULT: State = {
   sales: [],
   purchases: SEED_PURCHASES,
   printer: DEFAULT_PRINTER,
+  audit: [],
+  held: [],
 };
 
 let state: State = DEFAULT;
@@ -158,7 +187,19 @@ function load(): State {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT;
     const parsed = JSON.parse(raw) as Partial<State>;
-    return { ...DEFAULT, ...parsed, printer: { ...DEFAULT.printer, ...(parsed.printer ?? {}) } };
+    // Migrate: ensure seed admin exists
+    const employees = parsed.employees ?? DEFAULT.employees;
+    if (!employees.find((e) => e.phone === "9876543210")) {
+      employees.unshift(DEFAULT.employees[0]);
+    }
+    return {
+      ...DEFAULT,
+      ...parsed,
+      employees,
+      audit: parsed.audit ?? [],
+      held: parsed.held ?? [],
+      printer: { ...DEFAULT.printer, ...(parsed.printer ?? {}) },
+    };
   } catch {
     return DEFAULT;
   }
@@ -168,10 +209,7 @@ function persist() {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(state));
 }
-
-function emit() {
-  listeners.forEach((l) => l());
-}
+function emit() { listeners.forEach((l) => l()); }
 
 export function hydrate() {
   if (hydrated || typeof window === "undefined") return;
@@ -179,19 +217,11 @@ export function hydrate() {
   hydrated = true;
   emit();
 }
-
-function subscribe(cb: () => void) {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
-}
+function subscribe(cb: () => void) { listeners.add(cb); return () => listeners.delete(cb); }
 
 export function useStore<T>(selector: (s: State) => T): T {
   useEffect(() => hydrate(), []);
-  return useSyncExternalStore(
-    subscribe,
-    () => selector(state),
-    () => selector(DEFAULT),
-  );
+  return useSyncExternalStore(subscribe, () => selector(state), () => selector(DEFAULT));
 }
 
 function setState(mut: (s: State) => void) {
@@ -202,36 +232,57 @@ function setState(mut: (s: State) => void) {
   emit();
 }
 
-// --- actions ---
+function audit(entry: Omit<AuditEntry, "id" | "at">) {
+  setState((s) => {
+    s.audit.unshift({
+      ...entry,
+      id: "A" + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100),
+      at: new Date().toISOString(),
+    });
+    if (s.audit.length > 500) s.audit = s.audit.slice(0, 500);
+  });
+}
+
+function actorLabel(actor?: { id: string; name: string }) {
+  if (!actor) return "system";
+  return `${actor.id} · ${actor.name}`;
+}
+
 export const actions = {
-  addMedicine(m: Omit<Medicine, "id">) {
+  addMedicine(m: Omit<Medicine, "id">, actor?: { id: string; name: string }) {
     setState((s) => {
       s.medicines.unshift({ ...m, id: "M" + Date.now().toString().slice(-6) });
     });
+    audit({ actor: actorLabel(actor), action: "medicine.add", target: m.name });
   },
-  updateMedicine(id: string, patch: Partial<Medicine>) {
+  updateMedicine(id: string, patch: Partial<Medicine>, actor?: { id: string; name: string }) {
     setState((s) => {
       const i = s.medicines.findIndex((x) => x.id === id);
       if (i >= 0) s.medicines[i] = { ...s.medicines[i], ...patch };
     });
+    audit({ actor: actorLabel(actor), action: "medicine.update", target: id, detail: JSON.stringify(patch) });
   },
-  deleteMedicine(id: string) {
+  deleteMedicine(id: string, actor?: { id: string; name: string }) {
     setState((s) => { s.medicines = s.medicines.filter((x) => x.id !== id); });
+    audit({ actor: actorLabel(actor), action: "medicine.delete", target: id });
   },
   bulkAddMedicines(list: Omit<Medicine, "id">[]) {
     setState((s) => {
       list.forEach((m, i) => s.medicines.unshift({ ...m, id: "M" + (Date.now() + i).toString().slice(-6) }));
     });
   },
+  adjustStock(id: string, delta: number, reason: string, actor?: { id: string; name: string }) {
+    setState((s) => {
+      const m = s.medicines.find((x) => x.id === id);
+      if (m) m.stock = Math.max(0, m.stock + delta);
+    });
+    audit({ actor: actorLabel(actor), action: "stock.adjust", target: id, detail: `${delta > 0 ? "+" : ""}${delta} · ${reason}` });
+  },
 
   upsertCustomerByPhone(input: { name: string; phone: string; doctor?: string }): Customer {
     const phone = input.phone.trim();
     if (!phone) {
-      const c: Customer = {
-        id: "WALK", name: input.name || "Walk-in", phone: "", doctor: input.doctor,
-        balance: 0, createdAt: new Date().toISOString(),
-      };
-      return c;
+      return { id: "WALK", name: input.name || "Walk-in", phone: "", doctor: input.doctor, balance: 0, createdAt: new Date().toISOString() };
     }
     const existing = state.customers.find((c) => c.phone === phone);
     if (existing) {
@@ -245,29 +296,20 @@ export const actions = {
     }
     const created: Customer = {
       id: "C" + Date.now().toString().slice(-6),
-      name: input.name || "Walk-in",
-      phone,
-      doctor: input.doctor,
-      balance: 0,
-      createdAt: new Date().toISOString(),
+      name: input.name || "Walk-in", phone, doctor: input.doctor,
+      balance: 0, createdAt: new Date().toISOString(),
     };
     setState((s) => { s.customers.unshift(created); });
     return created;
   },
   addCustomer(c: Omit<Customer, "id" | "createdAt" | "balance"> & { balance?: number }) {
     setState((s) => {
-      s.customers.unshift({
-        ...c, id: "C" + Date.now().toString().slice(-6),
-        balance: c.balance ?? 0, createdAt: new Date().toISOString(),
-      });
+      s.customers.unshift({ ...c, id: "C" + Date.now().toString().slice(-6), balance: c.balance ?? 0, createdAt: new Date().toISOString() });
     });
   },
   bulkAddCustomers(list: (Omit<Customer, "id" | "createdAt" | "balance"> & { balance?: number })[]) {
     setState((s) => {
-      list.forEach((c, i) => s.customers.unshift({
-        ...c, id: "C" + (Date.now() + i).toString().slice(-6),
-        balance: c.balance ?? 0, createdAt: new Date().toISOString(),
-      }));
+      list.forEach((c, i) => s.customers.unshift({ ...c, id: "C" + (Date.now() + i).toString().slice(-6), balance: c.balance ?? 0, createdAt: new Date().toISOString() }));
     });
   },
   deleteCustomer(id: string) {
@@ -277,59 +319,123 @@ export const actions = {
   addSupplier(s: Omit<Supplier, "id">) {
     setState((st) => { st.suppliers.unshift({ ...s, id: "S" + Date.now().toString().slice(-6) }); });
   },
-  addEmployee(e: Omit<Employee, "id">) {
-    setState((st) => { st.employees.unshift({ ...e, id: "E" + Date.now().toString().slice(-6) }); });
+
+  addEmployee(e: Omit<Employee, "id" | "createdAt">, actor?: { id: string; name: string }): Employee {
+    const id = "E" + (100 + state.employees.length + 1).toString().padStart(3, "0");
+    const rec: Employee = { ...e, id, active: e.active ?? true, createdAt: new Date().toISOString() };
+    setState((s) => { s.employees.unshift(rec); });
+    audit({ actor: actorLabel(actor), action: "employee.add", target: id, detail: `${rec.name} · ${rec.role}` });
+    return rec;
   },
-  addPurchase(p: Omit<Purchase, "id">) {
-    setState((s) => { s.purchases.unshift({ ...p, id: "P" + Date.now().toString().slice(-6) }); });
+  updateEmployee(id: string, patch: Partial<Employee>) {
+    setState((s) => {
+      const i = s.employees.findIndex((x) => x.id === id);
+      if (i >= 0) s.employees[i] = { ...s.employees[i], ...patch };
+    });
+  },
+  deleteEmployee(id: string, actor?: { id: string; name: string }) {
+    setState((s) => { s.employees = s.employees.filter((e) => e.id !== id); });
+    audit({ actor: actorLabel(actor), action: "employee.delete", target: id });
   },
 
-  saveSale(sale: Omit<Sale, "id" | "date" | "status">): Sale {
+  addPurchase(p: Omit<Purchase, "id">, actor?: { id: string; name: string }) {
+    setState((s) => {
+      const rec = { ...p, id: "P" + Date.now().toString().slice(-6) };
+      s.purchases.unshift(rec);
+      // Increase stock (FEFO friendly: keeps batch expiry data intact per medicine)
+      p.items.forEach((it) => {
+        const m = s.medicines.find((x) => x.name === it.name && x.batch === it.batch);
+        if (m) m.stock += it.qty;
+      });
+    });
+    audit({ actor: actorLabel(actor), action: "purchase.add", target: p.invoiceNo, detail: `${p.supplier} · ₹${p.total}` });
+  },
+
+  saveSale(
+    sale: Omit<Sale, "id" | "date" | "status">,
+    actor?: { id: string; name: string },
+  ): Sale {
     const record: Sale = {
       ...sale,
-      id: sale.customerId === null && !sale.phone ? "INV" + Date.now().toString().slice(-6) : "INV" + Date.now().toString().slice(-6),
+      cashierId: actor?.id,
+      cashierName: actor?.name,
+      id: "INV" + Date.now().toString().slice(-6),
       date: new Date().toISOString(),
       status: "paid",
     };
     setState((s) => {
       s.sales.unshift(record);
-      // decrement stock
+      // FEFO deduction: for each line, deduct from earliest-expiry batch of same medicine name first
       sale.items.forEach((it) => {
-        const m = s.medicines.find((x) => x.name === it.name && x.batch === it.batch);
-        if (m) m.stock = Math.max(0, m.stock - it.qty);
+        let remaining = it.qty;
+        const candidates = s.medicines
+          .filter((m) => m.name === it.name && m.stock > 0)
+          .sort((a, b) => a.expiry.localeCompare(b.expiry));
+        for (const m of candidates) {
+          if (remaining <= 0) break;
+          const take = Math.min(m.stock, remaining);
+          m.stock -= take;
+          remaining -= take;
+        }
+        if (remaining > 0) {
+          const exact = s.medicines.find((x) => x.name === it.name && x.batch === it.batch);
+          if (exact) exact.stock = Math.max(0, exact.stock - remaining);
+        }
       });
     });
+    audit({ actor: actorLabel(actor), action: "bill.save", target: record.id, detail: `₹${record.grand} · ${record.payment}` });
     return record;
   },
-  cancelSale(id: string) {
+  cancelSale(id: string, actor?: { id: string; name: string }) {
     setState((s) => {
       const sale = s.sales.find((x) => x.id === id);
       if (!sale || sale.status === "cancelled") return;
       sale.status = "cancelled";
-      // restore stock
       sale.items.forEach((it) => {
-        const m = s.medicines.find((x) => x.name === it.name && x.batch === it.batch);
+        const m = s.medicines.find((x) => x.name === it.name && x.batch === it.batch)
+          ?? s.medicines.find((x) => x.name === it.name);
         if (m) m.stock += it.qty;
       });
     });
+    audit({ actor: actorLabel(actor), action: "bill.cancel", target: id });
+  },
+
+  holdBill(bill: Omit<HeldBill, "id" | "at">, actor?: { id: string; name: string }): HeldBill {
+    const rec: HeldBill = {
+      ...bill,
+      id: "H" + Date.now().toString().slice(-6),
+      at: new Date().toISOString(),
+      cashierId: actor?.id,
+      cashierName: actor?.name,
+    };
+    setState((s) => { s.held.unshift(rec); });
+    audit({ actor: actorLabel(actor), action: "bill.hold", target: rec.id });
+    return rec;
+  },
+  resumeHeld(id: string): HeldBill | null {
+    const found = state.held.find((h) => h.id === id) ?? null;
+    if (found) setState((s) => { s.held = s.held.filter((h) => h.id !== id); });
+    return found;
+  },
+  deleteHeld(id: string) {
+    setState((s) => { s.held = s.held.filter((h) => h.id !== id); });
   },
 
   updatePrinter(patch: Partial<PrinterSettings>) {
     setState((s) => { s.printer = { ...s.printer, ...patch }; });
   },
 
+  logLogin(actor: { id: string; name: string }) {
+    audit({ actor: actorLabel(actor), action: "login" });
+  },
+
   resetAll() {
-    setState(() => {
-      Object.assign(state, DEFAULT);
-    });
     state = structuredClone(DEFAULT);
     persist();
     emit();
   },
 
-  exportJSON(): string {
-    return JSON.stringify(state, null, 2);
-  },
+  exportJSON(): string { return JSON.stringify(state, null, 2); },
   importJSON(json: string) {
     const parsed = JSON.parse(json) as State;
     state = { ...DEFAULT, ...parsed };
