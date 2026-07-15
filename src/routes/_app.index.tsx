@@ -501,7 +501,7 @@ function BillingPage() {
           <Button variant="outline" className="h-11" onClick={printBill}>
             <Printer className="h-4 w-4 mr-1.5" /> Save & Print
           </Button>
-          <Button variant="outline" className="h-11" onClick={() => toast("Bill held")}>
+          <Button variant="outline" className="h-11" onClick={holdBill}>
             <PauseCircle className="h-4 w-4 mr-1.5" /> Hold
           </Button>
           <Button variant="ghost" className="h-11 text-destructive hover:text-destructive" onClick={clear}>
