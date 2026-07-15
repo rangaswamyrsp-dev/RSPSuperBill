@@ -225,9 +225,32 @@ function BillingPage() {
               <div className="font-medium">{today || "—"}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Counter</div>
-              <div className="font-medium">Counter 1 · Manjju</div>
+              <div className="text-xs text-muted-foreground">Cashier</div>
+              <div className="font-medium">{me ? `${me.id} · ${me.name}` : "—"}</div>
+              <div className="text-[11px] text-muted-foreground">{me?.role}</div>
             </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <PauseCircle className="h-3.5 w-3.5" /> Held ({held.length})
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="px-3 py-2 border-b text-sm font-semibold">Held bills</div>
+                <div className="max-h-72 overflow-y-auto divide-y">
+                  {held.length === 0 && <div className="p-4 text-sm text-muted-foreground text-center">No bills on hold.</div>}
+                  {held.map((h) => (
+                    <button key={h.id} onClick={() => resumeHeld(h.id)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted text-left">
+                      <PlayCircle className="h-4 w-4 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{h.id} · {h.customerName || "Walk-in"}</div>
+                        <div className="text-xs text-muted-foreground">{h.items.length} items · {new Date(h.at).toLocaleTimeString("en-IN")}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Badge variant="secondary" className="gap-1.5">
               <Keyboard className="h-3.5 w-3.5" /> F2 New · F9 Save · F10 Print
             </Badge>
