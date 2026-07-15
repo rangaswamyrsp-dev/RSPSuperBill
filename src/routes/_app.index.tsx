@@ -43,6 +43,10 @@ function BillingPage() {
   const medicines = useStore((s) => s.medicines);
   const customers = useStore((s) => s.customers);
   const printer = useStore((s) => s.printer);
+  const held = useStore((s) => s.held);
+
+  const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => setMe(getUser()), []);
 
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<LineItem[]>([]);
