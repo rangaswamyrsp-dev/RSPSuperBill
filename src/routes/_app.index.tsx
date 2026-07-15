@@ -132,6 +132,8 @@ function BillingPage() {
     setPayment("cash");
   };
 
+  const actor = me ? { id: me.id, name: me.name } : undefined;
+
   const buildSale = () => {
     const cust = actions.upsertCustomerByPhone({
       name: customer.name, phone: customer.phone, doctor: customer.doctor,
@@ -156,7 +158,7 @@ function BillingPage() {
       gst: +totals.gst.toFixed(2),
       grand: totals.grand,
       payment,
-    });
+    }, actor);
   };
 
   const saveBill = () => {
@@ -173,6 +175,34 @@ function BillingPage() {
     printReceipt(sale, printer);
     toast.success(`Bill ${sale.id} · sent to printer`);
     clear();
+  };
+
+  const holdBill = () => {
+    if (items.length === 0) return toast.error("Nothing to hold");
+    const rec = actions.holdBill({
+      customerName: customer.name || "Walk-in",
+      phone: customer.phone,
+      doctor: customer.doctor || undefined,
+      items: items.map((it) => ({
+        id: it.id, name: it.name, batch: it.batch, qty: it.qty,
+        mrp: it.mrp, gst: it.gst, discount: it.discount, company: it.company,
+      })),
+    }, actor);
+    toast.success(`Bill held · ${rec.id}`);
+    clear();
+  };
+
+  const resumeHeld = (id: string) => {
+    const found = actions.resumeHeld(id);
+    if (!found) return;
+    setCustomer({ name: found.customerName, phone: found.phone, doctor: found.doctor ?? "" });
+    setItems(found.items.map((it) => ({
+      id: it.id, name: it.name, batch: it.batch, mrp: it.mrp, gst: it.gst,
+      stock: 0, expiry: "", company: it.company ?? "",
+      qty: it.qty, discount: it.discount,
+    })));
+    toast.success(`Resumed held bill ${id}`);
+  };
   };
 
   return (
