@@ -2,42 +2,56 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Receipt, ShoppingCart, PackageSearch, Pill, Users, Truck,
   UserCog, BarChart3, Percent, Wallet, ScanBarcode, QrCode, Settings, DatabaseBackup, LogOut,
-  Stethoscope,
+  Stethoscope, HelpCircle, ShieldCheck,
 } from "lucide-react";
-import { logout } from "@/lib/auth";
+import { logout, getUser, CAN, type Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
-export const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/", label: "Billing", icon: Receipt, highlight: true },
-  { to: "/sales", label: "Sales", icon: ShoppingCart },
-  { to: "/purchase", label: "Purchase", icon: Truck },
-  { to: "/inventory", label: "Inventory", icon: PackageSearch },
-  { to: "/medicines", label: "Medicines", icon: Pill },
-  { to: "/customers", label: "Customers", icon: Users },
-  { to: "/suppliers", label: "Suppliers", icon: Truck },
-  { to: "/employees", label: "Employees", icon: UserCog },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/gst", label: "GST", icon: Percent },
-  { to: "/accounts", label: "Accounts", icon: Wallet },
-  { to: "/barcode", label: "Barcode", icon: ScanBarcode },
-  { to: "/qr", label: "QR Code", icon: QrCode },
-  { to: "/settings", label: "Settings", icon: Settings },
-  { to: "/backup", label: "Backup", icon: DatabaseBackup },
-] as { to: string; label: string; icon: any; highlight?: boolean }[];
+type Item = { to: string; label: string; icon: any; highlight?: boolean; cap: keyof typeof CAN["Admin"] };
+
+const ALL_NAV: Item[] = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, cap: "dashboard" },
+  { to: "/", label: "Billing", icon: Receipt, highlight: true, cap: "billing" },
+  { to: "/sales", label: "Sales", icon: ShoppingCart, cap: "sales" },
+  { to: "/purchase", label: "Purchase", icon: Truck, cap: "purchase" },
+  { to: "/inventory", label: "Inventory", icon: PackageSearch, cap: "inventory" },
+  { to: "/medicines", label: "Medicines", icon: Pill, cap: "medicines" },
+  { to: "/customers", label: "Customers", icon: Users, cap: "customers" },
+  { to: "/suppliers", label: "Suppliers", icon: Truck, cap: "suppliers" },
+  { to: "/employees", label: "Employees", icon: UserCog, cap: "employees" },
+  { to: "/reports", label: "Reports", icon: BarChart3, cap: "reports" },
+  { to: "/gst", label: "GST", icon: Percent, cap: "gst" },
+  { to: "/accounts", label: "Accounts", icon: Wallet, cap: "accounts" },
+  { to: "/audit", label: "Audit Log", icon: ShieldCheck, cap: "audit" },
+  { to: "/barcode", label: "Barcode", icon: ScanBarcode, cap: "barcode" },
+  { to: "/qr", label: "QR Code", icon: QrCode, cap: "qr" },
+  { to: "/help", label: "Help & Guide", icon: HelpCircle, cap: "dashboard" },
+  { to: "/settings", label: "Settings", icon: Settings, cap: "settings" },
+  { to: "/backup", label: "Backup", icon: DatabaseBackup, cap: "backup" },
+];
+
+// Kept exported for anything still referencing NAV.
+export const NAV = ALL_NAV;
+
+function useRole(): Role {
+  const [role, setRole] = useState<Role>("Cashier");
+  useEffect(() => { const u = getUser(); if (u) setRole(u.role); }, []);
+  return role;
+}
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const role = useRole();
+  const items = ALL_NAV.filter((i) => CAN[role][i.cap]);
   return (
     <nav className="flex-1 overflow-y-auto p-2">
-      {NAV.map((item) => {
+      {items.map((item) => {
         const active = path === item.to;
         const Icon = item.icon;
         return (
           <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
+            key={item.to} to={item.to} onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               active
@@ -48,9 +62,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             <Icon className="h-4 w-4 shrink-0" />
             <span className="truncate">{item.label}</span>
             {item.highlight && !active && (
-              <span className="ml-auto rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                F2
-              </span>
+              <span className="ml-auto rounded-sm bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">F2</span>
             )}
           </Link>
         );
@@ -66,10 +78,7 @@ export function AppSidebar() {
       <SidebarBrand />
       <SidebarNav />
       <button
-        onClick={() => {
-          logout();
-          navigate({ to: "/login" });
-        }}
+        onClick={() => { logout(); navigate({ to: "/login" }); }}
         className="flex items-center gap-3 border-t border-sidebar-border px-5 py-3 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
       >
         <LogOut className="h-4 w-4" /> Logout

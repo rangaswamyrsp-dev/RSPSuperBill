@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2, Menu } from "lucide-react";
+import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2, Menu, AlertTriangle, PauseCircle, CalendarClock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,12 +8,16 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getUser, logout } from "@/lib/auth";
+import { getUser, logout, updateStoredUser } from "@/lib/auth";
+import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 import { SidebarBrand, SidebarNav } from "./AppSidebar";
 
@@ -23,17 +27,35 @@ export function AppHeader() {
   const [name, setName] = useState("");
   const navigate = useNavigate();
 
+  const medicines = useStore((s) => s.medicines);
+  const held = useStore((s) => s.held);
+
+  const notifications = useMemo(() => {
+    const list: { type: "low" | "expiry" | "held"; title: string; sub: string }[] = [];
+    medicines
+      .filter((m) => m.stock < 20)
+      .slice(0, 8)
+      .forEach((m) => list.push({ type: "low", title: `Low stock · ${m.name}`, sub: `Only ${m.stock} left · Batch ${m.batch}` }));
+    const now = new Date();
+    medicines.forEach((m) => {
+      if (!m.expiry) return;
+      const [y, mo] = m.expiry.split("-").map(Number);
+      if (!y) return;
+      const exp = new Date(y, (mo || 1) - 1, 1);
+      const days = Math.floor((exp.getTime() - now.getTime()) / 86400000);
+      if (days <= 90 && days >= -30) list.push({ type: "expiry", title: `Expiring · ${m.name}`, sub: `Exp ${m.expiry} · Batch ${m.batch}` });
+    });
+    held.forEach((h) => list.push({ type: "held", title: `Held bill ${h.id}`, sub: `${h.customerName || "Walk-in"} · ${h.items.length} items` }));
+    return list.slice(0, 12);
+  }, [medicines, held]);
+
   useEffect(() => {
     const u = getUser();
     setUser(u);
     setName(u?.name ?? "");
   }, []);
 
-  const initials = (user?.name ?? "  ")
-    .split(" ")
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join("") || " ";
+  const initials = (user?.name ?? "  ").split(" ").map((s) => s[0]).slice(0, 2).join("") || " ";
 
   return (
     <header className="h-16 shrink-0 border-b bg-card flex items-center gap-2 px-3 lg:px-6">
@@ -44,22 +66,56 @@ export function AppHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-64 flex flex-col">
+          <SheetHeader className="sr-only"><SheetTitle>Menu</SheetTitle></SheetHeader>
           <SidebarBrand />
           <SidebarNav />
         </SheetContent>
       </Sheet>
       <div className="relative flex-1 max-w-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Global search — medicines, invoices, customers…"
-          className="pl-9 h-10 bg-background"
-        />
+        <Input placeholder="Global search — medicines, invoices, customers…" className="pl-9 h-10 bg-background" />
       </div>
       <div className="ml-auto flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[color:var(--warning)]" />
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+              <Bell className="h-5 w-5" />
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-[color:var(--warning)] text-[10px] font-semibold text-white grid place-items-center">
+                  {notifications.length}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 p-0">
+            <div className="px-3 py-2 border-b flex items-center justify-between">
+              <div className="text-sm font-semibold">Notifications</div>
+              <div className="text-xs text-muted-foreground">{notifications.length} new</div>
+            </div>
+            <div className="max-h-80 overflow-y-auto divide-y">
+              {notifications.length === 0 && (
+                <div className="p-6 text-center text-sm text-muted-foreground">You're all caught up 🎉</div>
+              )}
+              {notifications.map((n, i) => {
+                const Icon = n.type === "low" ? AlertTriangle : n.type === "expiry" ? CalendarClock : PauseCircle;
+                const color = n.type === "low" ? "text-[color:var(--warning)]" : n.type === "expiry" ? "text-destructive" : "text-[color:var(--info)]";
+                return (
+                  <div key={i} className="px-3 py-2 flex items-start gap-2 text-sm">
+                    <Icon className={"h-4 w-4 mt-0.5 " + color} />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{n.title}</div>
+                      <div className="text-xs text-muted-foreground truncate">{n.sub}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="border-t p-2 flex gap-2">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate({ to: "/inventory" })}>Inventory</Button>
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => navigate({ to: "/" })}>Billing</Button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -71,12 +127,12 @@ export function AppHeader() {
               </Avatar>
               <div className="hidden md:block text-left leading-tight">
                 <div className="text-sm font-medium">{user?.name}</div>
-                <div className="text-[11px] text-muted-foreground">{user?.role}</div>
+                <div className="text-[11px] text-muted-foreground">{user?.id} · {user?.role}</div>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+            <DropdownMenuLabel>{user?.phone}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               <UserCog className="h-4 w-4 mr-2" /> Edit profile
@@ -85,12 +141,7 @@ export function AppHeader() {
               <Settings2 className="h-4 w-4 mr-2" /> Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                logout();
-                navigate({ to: "/login" });
-              }}
-            >
+            <DropdownMenuItem onClick={() => { logout(); navigate({ to: "/login" }); }}>
               <LogOut className="h-4 w-4 mr-2" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -98,26 +149,16 @@ export function AppHeader() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-5 w-5" />
-            </Button>
+            <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => toast.success("Backup started")}>
-              Backup database
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast("Printing test page…")}>
-              Printer test page
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast("Cache cleared")}>
-              Clear cache
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/backup" })}>Backup database</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast("Printing test page…")}>Printer test page</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/help" })}>Help &amp; guide</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
-              Preferences
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>Preferences</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -129,36 +170,21 @@ export function AppHeader() {
             <DialogDescription>Update your display name for this device.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Full name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Email</Label>
-              <Input value={user?.email ?? ""} disabled />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Role</Label>
-              <Input value={user?.role ?? ""} disabled />
-            </div>
+            <div className="space-y-1.5"><Label>Full name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Employee ID</Label><Input value={user?.id ?? ""} disabled /></div>
+            <div className="space-y-1.5"><Label>Phone</Label><Input value={user?.phone ?? ""} disabled /></div>
+            <div className="space-y-1.5"><Label>Role</Label><Input value={user?.role ?? ""} disabled /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button
-              onClick={() => {
-                if (user) {
-                  const next = { ...user, name };
-                  const key = "rsp_auth_user";
-                  const store = localStorage.getItem(key) ? localStorage : sessionStorage;
-                  store.setItem(key, JSON.stringify(next));
-                  setUser(next);
-                  setEditOpen(false);
-                  toast.success("Profile updated");
-                }
-              }}
-            >
-              Save changes
-            </Button>
+            <Button onClick={() => {
+              if (user) {
+                updateStoredUser({ name });
+                setUser({ ...user, name });
+                setEditOpen(false);
+                toast.success("Profile updated");
+              }
+            }}>Save changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Search, ScanBarcode, QrCode, Plus, Trash2, Save, Printer, PauseCircle, X,
-  Percent, Keyboard, User, Phone, Stethoscope, UserCheck,
+  Percent, Keyboard, User, Phone, Stethoscope, UserCheck, PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import type { Medicine } from "@/data/medicines";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { actions, useStore, useHydrated } from "@/lib/store";
 import { printReceipt } from "@/lib/print";
 import { BarcodeScanner } from "@/components/app/BarcodeScanner";
+import { getUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({
@@ -41,6 +43,10 @@ function BillingPage() {
   const medicines = useStore((s) => s.medicines);
   const customers = useStore((s) => s.customers);
   const printer = useStore((s) => s.printer);
+  const held = useStore((s) => s.held);
+
+  const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => setMe(getUser()), []);
 
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<LineItem[]>([]);
@@ -126,6 +132,8 @@ function BillingPage() {
     setPayment("cash");
   };
 
+  const actor = me ? { id: me.id, name: me.name } : undefined;
+
   const buildSale = () => {
     const cust = actions.upsertCustomerByPhone({
       name: customer.name, phone: customer.phone, doctor: customer.doctor,
@@ -150,7 +158,7 @@ function BillingPage() {
       gst: +totals.gst.toFixed(2),
       grand: totals.grand,
       payment,
-    });
+    }, actor);
   };
 
   const saveBill = () => {
@@ -167,6 +175,33 @@ function BillingPage() {
     printReceipt(sale, printer);
     toast.success(`Bill ${sale.id} · sent to printer`);
     clear();
+  };
+
+  const holdBill = () => {
+    if (items.length === 0) return toast.error("Nothing to hold");
+    const rec = actions.holdBill({
+      customerName: customer.name || "Walk-in",
+      phone: customer.phone,
+      doctor: customer.doctor || undefined,
+      items: items.map((it) => ({
+        id: it.id, name: it.name, batch: it.batch, qty: it.qty,
+        mrp: it.mrp, gst: it.gst, discount: it.discount, company: it.company,
+      })),
+    }, actor);
+    toast.success(`Bill held · ${rec.id}`);
+    clear();
+  };
+
+  const resumeHeld = (id: string) => {
+    const found = actions.resumeHeld(id);
+    if (!found) return;
+    setCustomer({ name: found.customerName, phone: found.phone, doctor: found.doctor ?? "" });
+    setItems(found.items.map((it) => ({
+      id: it.id, name: it.name, batch: it.batch, mrp: it.mrp, gst: it.gst,
+      stock: 0, expiry: "", company: it.company ?? "",
+      qty: it.qty, discount: it.discount,
+    })));
+    toast.success(`Resumed held bill ${id}`);
   };
 
   return (
@@ -190,9 +225,32 @@ function BillingPage() {
               <div className="font-medium">{today || "—"}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Counter</div>
-              <div className="font-medium">Counter 1 · Manjju</div>
+              <div className="text-xs text-muted-foreground">Cashier</div>
+              <div className="font-medium">{me ? `${me.id} · ${me.name}` : "—"}</div>
+              <div className="text-[11px] text-muted-foreground">{me?.role}</div>
             </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <PauseCircle className="h-3.5 w-3.5" /> Held ({held.length})
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="px-3 py-2 border-b text-sm font-semibold">Held bills</div>
+                <div className="max-h-72 overflow-y-auto divide-y">
+                  {held.length === 0 && <div className="p-4 text-sm text-muted-foreground text-center">No bills on hold.</div>}
+                  {held.map((h) => (
+                    <button key={h.id} onClick={() => resumeHeld(h.id)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted text-left">
+                      <PlayCircle className="h-4 w-4 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{h.id} · {h.customerName || "Walk-in"}</div>
+                        <div className="text-xs text-muted-foreground">{h.items.length} items · {new Date(h.at).toLocaleTimeString("en-IN")}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Badge variant="secondary" className="gap-1.5">
               <Keyboard className="h-3.5 w-3.5" /> F2 New · F9 Save · F10 Print
             </Badge>
@@ -443,7 +501,7 @@ function BillingPage() {
           <Button variant="outline" className="h-11" onClick={printBill}>
             <Printer className="h-4 w-4 mr-1.5" /> Save & Print
           </Button>
-          <Button variant="outline" className="h-11" onClick={() => toast("Bill held")}>
+          <Button variant="outline" className="h-11" onClick={holdBill}>
             <PauseCircle className="h-4 w-4 mr-1.5" /> Hold
           </Button>
           <Button variant="ghost" className="h-11 text-destructive hover:text-destructive" onClick={clear}>
