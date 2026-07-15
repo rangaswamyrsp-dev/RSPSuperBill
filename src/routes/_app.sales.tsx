@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import {
 import { Printer, Search, ShoppingCart, XCircle } from "lucide-react";
 import { actions, useStore } from "@/lib/store";
 import { printReceipt } from "@/lib/print";
+import { getUser, CAN } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/sales")({
