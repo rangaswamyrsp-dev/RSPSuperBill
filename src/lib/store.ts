@@ -283,6 +283,55 @@ function actorLabel(actor?: { id: string; name: string }) {
 }
 
 export const actions = {
+  // ---- SaaS: hotel accounts (super admin only) ----
+  addHotel(h: Omit<Hotel, "id" | "createdAt">, actor?: { id: string; name: string }): Hotel {
+    const n = state.hotels.length + 1;
+    const rec: Hotel = {
+      ...h,
+      id: "H" + n.toString().padStart(3, "0"),
+      active: h.active ?? true,
+      createdAt: new Date().toISOString(),
+    };
+    setState((s) => { s.hotels.unshift(rec); });
+    audit({ actor: actorLabel(actor), action: "hotel.add", target: rec.id, detail: `${rec.name} · ${rec.loginId}` });
+    return rec;
+  },
+  updateHotel(id: string, patch: Partial<Hotel>, actor?: { id: string; name: string }) {
+    setState((s) => {
+      const i = s.hotels.findIndex((x) => x.id === id);
+      if (i >= 0) s.hotels[i] = { ...s.hotels[i], ...patch };
+    });
+    audit({ actor: actorLabel(actor), action: "hotel.update", target: id });
+  },
+  deleteHotel(id: string, actor?: { id: string; name: string }) {
+    setState((s) => {
+      s.hotels = s.hotels.filter((h) => h.id !== id);
+      s.menuItems = s.menuItems.filter((m) => m.hotelId !== id);
+      s.employees = s.employees.filter((e) => e.hotelId !== id);
+    });
+    audit({ actor: actorLabel(actor), action: "hotel.delete", target: id });
+  },
+
+  // ---- Menu items (hotel admin manages their own) ----
+  addMenuItem(m: Omit<MenuItem, "id">, actor?: { id: string; name: string }): MenuItem {
+    const rec: MenuItem = { ...m, active: m.active ?? true, id: "IT" + Date.now().toString().slice(-7) };
+    setState((s) => { s.menuItems.unshift(rec); });
+    audit({ actor: actorLabel(actor), action: "item.add", target: rec.name, detail: `₹${rec.price}` });
+    return rec;
+  },
+  updateMenuItem(id: string, patch: Partial<MenuItem>, actor?: { id: string; name: string }) {
+    setState((s) => {
+      const i = s.menuItems.findIndex((x) => x.id === id);
+      if (i >= 0) s.menuItems[i] = { ...s.menuItems[i], ...patch };
+    });
+    audit({ actor: actorLabel(actor), action: "item.update", target: id });
+  },
+  deleteMenuItem(id: string, actor?: { id: string; name: string }) {
+    setState((s) => { s.menuItems = s.menuItems.filter((m) => m.id !== id); });
+    audit({ actor: actorLabel(actor), action: "item.delete", target: id });
+  },
+
+
   addMedicine(m: Omit<Medicine, "id">, actor?: { id: string; name: string }) {
     setState((s) => {
       s.medicines.unshift({ ...m, id: "M" + Date.now().toString().slice(-6) });
