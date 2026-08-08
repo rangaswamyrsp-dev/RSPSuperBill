@@ -1,8 +1,8 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Receipt, ShoppingCart, PackageSearch, Pill, Users, Truck,
-  UserCog, BarChart3, Percent, Wallet, ScanBarcode, QrCode, Settings, DatabaseBackup, LogOut,
-  Stethoscope, HelpCircle, ShieldCheck,
+  LayoutDashboard, Receipt, ShoppingCart, PackageSearch, UtensilsCrossed, Users, Truck,
+  UserCog, BarChart3, Percent, Wallet, ScanBarcode, Settings, DatabaseBackup, LogOut,
+  ChefHat, HelpCircle, ShieldCheck, Building2,
 } from "lucide-react";
 import { logout, getUser, CAN, type Role } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -11,12 +11,13 @@ import { useEffect, useState } from "react";
 type Item = { to: string; label: string; icon: any; highlight?: boolean; cap: keyof typeof CAN["Admin"] };
 
 const ALL_NAV: Item[] = [
+  { to: "/superadmin", label: "Hotel Accounts", icon: Building2, cap: "hotels" },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, cap: "dashboard" },
   { to: "/", label: "Billing", icon: Receipt, highlight: true, cap: "billing" },
+  { to: "/items", label: "Menu Items", icon: UtensilsCrossed, cap: "items" },
   { to: "/sales", label: "Sales", icon: ShoppingCart, cap: "sales" },
   { to: "/purchase", label: "Purchase", icon: Truck, cap: "purchase" },
   { to: "/inventory", label: "Inventory", icon: PackageSearch, cap: "inventory" },
-  { to: "/medicines", label: "Medicines", icon: Pill, cap: "medicines" },
   { to: "/customers", label: "Customers", icon: Users, cap: "customers" },
   { to: "/suppliers", label: "Suppliers", icon: Truck, cap: "suppliers" },
   { to: "/employees", label: "Employees", icon: UserCog, cap: "employees" },
@@ -25,7 +26,6 @@ const ALL_NAV: Item[] = [
   { to: "/accounts", label: "Accounts", icon: Wallet, cap: "accounts" },
   { to: "/audit", label: "Audit Log", icon: ShieldCheck, cap: "audit" },
   { to: "/barcode", label: "Barcode", icon: ScanBarcode, cap: "barcode" },
-  { to: "/qr", label: "QR Code", icon: QrCode, cap: "qr" },
   { to: "/help", label: "Help & Guide", icon: HelpCircle, cap: "dashboard" },
   { to: "/settings", label: "Settings", icon: Settings, cap: "settings" },
   { to: "/backup", label: "Backup", icon: DatabaseBackup, cap: "backup" },
@@ -33,6 +33,7 @@ const ALL_NAV: Item[] = [
 
 // Kept exported for anything still referencing NAV.
 export const NAV = ALL_NAV;
+
 
 function useRole(): Role {
   const [role, setRole] = useState<Role>("Cashier");
