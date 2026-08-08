@@ -181,6 +181,8 @@ const SEED_PURCHASES: Purchase[] = [
 ];
 
 type State = {
+  hotels: Hotel[];
+  menuItems: MenuItem[];
   medicines: Medicine[];
   customers: Customer[];
   suppliers: Supplier[];
@@ -195,6 +197,8 @@ type State = {
 const KEY = "rsp_store_v1";
 
 const DEFAULT: State = {
+  hotels: SEED_HOTELS,
+  menuItems: SEED_MENU,
   medicines: SEED_MEDICINES,
   customers: SEED_CUSTOMERS,
   suppliers: SEED_SUPPLIERS,
@@ -216,20 +220,21 @@ function load(): State {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT;
     const parsed = JSON.parse(raw) as Partial<State>;
-    // Migrate: ensure seed admin exists
-    const employees = parsed.employees ?? DEFAULT.employees;
-    if (!employees.find((e) => e.phone === "9876543210")) {
-      employees.unshift(DEFAULT.employees[0]);
-    }
+    // Migrate: make sure at least the demo hotel account + menu exist
+    const hotels = parsed.hotels?.length ? parsed.hotels : DEFAULT.hotels;
+    const menuItems = parsed.menuItems?.length ? parsed.menuItems : DEFAULT.menuItems;
     return {
       ...DEFAULT,
       ...parsed,
-      employees,
+      hotels,
+      menuItems,
+      employees: parsed.employees ?? DEFAULT.employees,
       audit: parsed.audit ?? [],
       held: parsed.held ?? [],
       printer: { ...DEFAULT.printer, ...(parsed.printer ?? {}) },
     };
   } catch {
+
     return DEFAULT;
   }
 }
