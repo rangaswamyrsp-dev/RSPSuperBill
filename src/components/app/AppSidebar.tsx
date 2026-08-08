@@ -89,15 +89,18 @@ export function AppSidebar() {
 }
 
 export function SidebarBrand() {
+  const [store, setStore] = useState("Hotel Billing");
+  useEffect(() => { const u = getUser(); if (u) setStore(u.store); }, []);
   return (
     <div className="flex items-center gap-2 px-5 h-16 border-b border-sidebar-border">
       <div className="grid place-items-center h-9 w-9 rounded-lg bg-primary text-primary-foreground">
-        <Stethoscope className="h-5 w-5" />
+        <ChefHat className="h-5 w-5" />
       </div>
       <div className="leading-tight">
-        <div className="text-sm font-semibold">RSP Billing</div>
-        <div className="text-[11px] text-muted-foreground">ANAM Medical Store</div>
+        <div className="text-sm font-semibold">RSP Hotel Billing</div>
+        <div className="text-[11px] text-muted-foreground truncate max-w-[140px]">{store}</div>
       </div>
     </div>
   );
+
 }
