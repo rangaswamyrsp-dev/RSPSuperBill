@@ -20,6 +20,7 @@ import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppQrRouteImport } from './routes/_app.qr'
 import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
 import { Route as AppMedicinesRouteImport } from './routes/_app.medicines'
+import { Route as AppItemsRouteImport } from './routes/_app.items'
 import { Route as AppInventoryRouteImport } from './routes/_app.inventory'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
 import { Route as AppGstRouteImport } from './routes/_app.gst'
@@ -83,6 +84,11 @@ const AppPurchaseRoute = AppPurchaseRouteImport.update({
 const AppMedicinesRoute = AppMedicinesRouteImport.update({
   id: '/medicines',
   path: '/medicines',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppItemsRoute = AppItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInventoryRoute = AppInventoryRouteImport.update({
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/gst': typeof AppGstRoute
   '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
+  '/items': typeof AppItemsRoute
   '/medicines': typeof AppMedicinesRoute
   '/purchase': typeof AppPurchaseRoute
   '/qr': typeof AppQrRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/gst': typeof AppGstRoute
   '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
+  '/items': typeof AppItemsRoute
   '/medicines': typeof AppMedicinesRoute
   '/purchase': typeof AppPurchaseRoute
   '/qr': typeof AppQrRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/_app/gst': typeof AppGstRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/inventory': typeof AppInventoryRoute
+  '/_app/items': typeof AppItemsRoute
   '/_app/medicines': typeof AppMedicinesRoute
   '/_app/purchase': typeof AppPurchaseRoute
   '/_app/qr': typeof AppQrRoute
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/gst'
     | '/help'
     | '/inventory'
+    | '/items'
     | '/medicines'
     | '/purchase'
     | '/qr'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/gst'
     | '/help'
     | '/inventory'
+    | '/items'
     | '/medicines'
     | '/purchase'
     | '/qr'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/_app/gst'
     | '/_app/help'
     | '/_app/inventory'
+    | '/_app/items'
     | '/_app/medicines'
     | '/_app/purchase'
     | '/_app/qr'
@@ -358,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMedicinesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/items': {
+      id: '/_app/items'
+      path: '/items'
+      fullPath: '/items'
+      preLoaderRoute: typeof AppItemsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/inventory': {
       id: '/_app/inventory'
       path: '/inventory'
@@ -442,6 +461,7 @@ interface AppRouteChildren {
   AppGstRoute: typeof AppGstRoute
   AppHelpRoute: typeof AppHelpRoute
   AppInventoryRoute: typeof AppInventoryRoute
+  AppItemsRoute: typeof AppItemsRoute
   AppMedicinesRoute: typeof AppMedicinesRoute
   AppPurchaseRoute: typeof AppPurchaseRoute
   AppQrRoute: typeof AppQrRoute
@@ -464,6 +484,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGstRoute: AppGstRoute,
   AppHelpRoute: AppHelpRoute,
   AppInventoryRoute: AppInventoryRoute,
+  AppItemsRoute: AppItemsRoute,
   AppMedicinesRoute: AppMedicinesRoute,
   AppPurchaseRoute: AppPurchaseRoute,
   AppQrRoute: AppQrRoute,
