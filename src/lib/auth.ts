@@ -1,87 +1,121 @@
-// Role-based auth. Phone = user ID. Manjju is main admin.
-// Employees added via /employees get an auto-generated password.
+// SaaS auth for RSP Hotel Billing.
+// 1) Super Admin (us) — creates hotel accounts and hands out User ID + Password.
+// 2) Hotel Admin — the hotel owner, logs in with the User ID we created.
+// 3) Hotel staff (Manager / Cashier / Waiter) — created by the hotel admin in Employees.
+// All data is stored per hotel (hotelId) so one hotel never sees another hotel's data.
 
-export type Role = "Admin" | "Manager" | "Cashier" | "Pharmacist";
+export type Role = "SuperAdmin" | "Admin" | "Manager" | "Cashier" | "Waiter" | "Pharmacist";
 
 export type AuthUser = {
-  id: string;         // Employee ID e.g. E001 or "ADMIN"
-  phone: string;      // login username
+  id: string; // "SUPER", hotel id, or employee id
+  phone: string; // login id
   name: string;
   role: Role;
-  store: string;
+  store: string; // hotel / business name
+  hotelId: string; // "" for super admin
   isMainAdmin?: boolean;
 };
 
 const KEY = "rsp_auth_user";
 
-// Main admin (Manjju) — always available regardless of employees list.
-export const MAIN_ADMIN = {
-  id: "ADMIN",
-  phone: "9876543210",
-  password: "anam@2026",
-  name: "Manjju",
-  role: "Admin" as Role,
-  store: "ANAM Medical Store",
+// Software owner account (Super Admin).
+export const SUPER_ADMIN = {
+  id: "SUPER",
+  loginId: "superadmin",
+  password: "rsp@super2026",
+  name: "RSP Super Admin",
+  role: "SuperAdmin" as Role,
 };
 
-// Legacy email support so old demo login (manjju@anam.com) still works
-const LEGACY_EMAIL = "manjju@anam.com";
+type HotelRecord = {
+  id: string;
+  name: string;
+  loginId: string;
+  password: string;
+  ownerName: string;
+  active?: boolean;
+};
 
-type EmployeeRecord = { id: string; name: string; role: string; phone: string; password?: string; active?: boolean };
+type EmployeeRecord = {
+  id: string;
+  name: string;
+  role: string;
+  phone: string;
+  password?: string;
+  active?: boolean;
+  hotelId?: string;
+};
 
-function readEmployees(): EmployeeRecord[] {
+function readStore(): { hotels: HotelRecord[]; employees: EmployeeRecord[] } {
   try {
     const raw = localStorage.getItem("rsp_store_v1");
-    if (!raw) return [];
+    if (!raw) return { hotels: [], employees: [] };
     const parsed = JSON.parse(raw);
-    return (parsed?.employees ?? []) as EmployeeRecord[];
+    return { hotels: parsed?.hotels ?? [], employees: parsed?.employees ?? [] };
   } catch {
-    return [];
+    return { hotels: [], employees: [] };
   }
 }
 
-export function login(usernameOrPhone: string, password: string, remember: boolean): AuthUser | null {
-  const u = usernameOrPhone.trim().toLowerCase();
-
-  // Main admin: phone or legacy email
-  if ((u === MAIN_ADMIN.phone || u === LEGACY_EMAIL) && password === MAIN_ADMIN.password) {
-    const user: AuthUser = {
-      id: MAIN_ADMIN.id, phone: MAIN_ADMIN.phone, name: MAIN_ADMIN.name,
-      role: MAIN_ADMIN.role, store: MAIN_ADMIN.store, isMainAdmin: true,
-    };
+export function login(loginId: string, password: string, remember: boolean): AuthUser | null {
+  const u = loginId.trim().toLowerCase();
+  const save = (user: AuthUser) => {
     (remember ? localStorage : sessionStorage).setItem(KEY, JSON.stringify(user));
     return user;
+  };
+
+  if (u === SUPER_ADMIN.loginId && password === SUPER_ADMIN.password) {
+    return save({
+      id: SUPER_ADMIN.id, phone: SUPER_ADMIN.loginId, name: SUPER_ADMIN.name,
+      role: "SuperAdmin", store: "RSP Software", hotelId: "", isMainAdmin: true,
+    });
   }
 
-  // Employees table
-  const emps = readEmployees();
-  const match = emps.find(
-    (e) => e.phone.trim() === u && (e.password ?? "") === password && (e.active ?? true),
+  const { hotels, employees } = readStore();
+
+  const hotel = hotels.find(
+    (h) => h.loginId?.trim().toLowerCase() === u && h.password === password && (h.active ?? true),
   );
-  if (match) {
-    const role = normalizeRole(match.role);
-    const user: AuthUser = {
-      id: match.id, phone: match.phone, name: match.name, role,
-      store: MAIN_ADMIN.store,
-    };
-    (remember ? localStorage : sessionStorage).setItem(KEY, JSON.stringify(user));
-    return user;
+  if (hotel) {
+    return save({
+      id: hotel.id, phone: hotel.loginId, name: hotel.ownerName || hotel.name,
+      role: "Admin", store: hotel.name, hotelId: hotel.id, isMainAdmin: true,
+    });
+  }
+
+  const emp = employees.find(
+    (e) => e.phone?.trim().toLowerCase() === u && (e.password ?? "") === password && (e.active ?? true),
+  );
+  if (emp) {
+    const hotelId = emp.hotelId ?? hotels[0]?.id ?? "H001";
+    const h = hotels.find((x) => x.id === hotelId);
+    return save({
+      id: emp.id, phone: emp.phone, name: emp.name, role: normalizeRole(emp.role),
+      store: h?.name ?? "My Hotel", hotelId,
+    });
   }
   return null;
 }
 
 function normalizeRole(r: string): Role {
-  const x = r.toLowerCase();
+  const x = (r || "").toLowerCase();
+  if (x.includes("super")) return "Manager"; // never grant super admin from employees
   if (x.includes("admin")) return "Admin";
   if (x.includes("manag")) return "Manager";
-  if (x.includes("pharm")) return "Pharmacist";
+  if (x.includes("wait") || x.includes("steward")) return "Waiter";
   return "Cashier";
 }
 
 export function getUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(KEY) ?? sessionStorage.getItem(KEY);
-  return raw ? (JSON.parse(raw) as AuthUser) : null;
+  if (!raw) return null;
+  try {
+    const u = JSON.parse(raw) as AuthUser;
+    return { ...u, hotelId: u.hotelId ?? "" };
+  } catch {
+    return null;
+  }
 }
 
 export function logout() {
@@ -106,11 +140,13 @@ export function generatePassword(): string {
 
 // Role-based capability map
 export const CAN: Record<Role, {
+  hotels: boolean;
   billing: boolean;
   sales: boolean;
   cancelBill: boolean;
   purchase: boolean;
   inventory: boolean;
+  items: boolean;
   medicines: boolean;
   customers: boolean;
   suppliers: boolean;
@@ -125,10 +161,13 @@ export const CAN: Record<Role, {
   audit: boolean;
   dashboard: boolean;
 }> = {
-  Admin:      { billing: true, sales: true, cancelBill: true, purchase: true, inventory: true, medicines: true, customers: true, suppliers: true, employees: true, reports: true, gst: true, accounts: true, barcode: true, qr: true, settings: true, backup: true, audit: true, dashboard: true },
-  Manager:    { billing: true, sales: true, cancelBill: true, purchase: true, inventory: true, medicines: true, customers: true, suppliers: true, employees: false, reports: true, gst: true, accounts: true, barcode: true, qr: true, settings: false, backup: true, audit: true, dashboard: true },
-  Pharmacist: { billing: true, sales: true, cancelBill: false, purchase: true, inventory: true, medicines: true, customers: true, suppliers: false, employees: false, reports: false, gst: false, accounts: false, barcode: true, qr: true, settings: false, backup: false, audit: false, dashboard: true },
-  Cashier:    { billing: true, sales: true, cancelBill: false, purchase: false, inventory: false, medicines: false, customers: true, suppliers: false, employees: false, reports: false, gst: false, accounts: false, barcode: false, qr: true, settings: false, backup: false, audit: false, dashboard: true },
+  SuperAdmin: { hotels: true, billing: false, sales: false, cancelBill: false, purchase: false, inventory: false, items: false, medicines: false, customers: false, suppliers: false, employees: false, reports: false, gst: false, accounts: false, barcode: false, qr: false, settings: true, backup: true, audit: true, dashboard: false },
+  Admin:      { hotels: false, billing: true, sales: true, cancelBill: true, purchase: true, inventory: true, items: true, medicines: false, customers: true, suppliers: true, employees: true, reports: true, gst: true, accounts: true, barcode: true, qr: false, settings: true, backup: true, audit: true, dashboard: true },
+  Manager:    { hotels: false, billing: true, sales: true, cancelBill: true, purchase: true, inventory: true, items: true, medicines: false, customers: true, suppliers: true, employees: false, reports: true, gst: true, accounts: true, barcode: true, qr: false, settings: false, backup: true, audit: true, dashboard: true },
+  Waiter:     { hotels: false, billing: true, sales: true, cancelBill: false, purchase: false, inventory: false, items: false, medicines: false, customers: true, suppliers: false, employees: false, reports: false, gst: false, accounts: false, barcode: false, qr: false, settings: false, backup: false, audit: false, dashboard: true },
+  Cashier:    { hotels: false, billing: true, sales: true, cancelBill: false, purchase: false, inventory: false, items: false, medicines: false, customers: true, suppliers: false, employees: false, reports: false, gst: false, accounts: false, barcode: false, qr: false, settings: false, backup: false, audit: false, dashboard: true },
+  Pharmacist: { hotels: false, billing: true, sales: true, cancelBill: false, purchase: true, inventory: true, items: true, medicines: false, customers: true, suppliers: false, employees: false, reports: false, gst: false, accounts: false, barcode: true, qr: false, settings: false, backup: false, audit: false, dashboard: true },
 };
 
-export const DEMO_CREDENTIALS = { phone: MAIN_ADMIN.phone, password: MAIN_ADMIN.password };
+export const DEMO_CREDENTIALS = { phone: SUPER_ADMIN.loginId, password: SUPER_ADMIN.password };
+export const HOTEL_DEMO = { loginId: "vaishali", password: "hotel@2026" };
