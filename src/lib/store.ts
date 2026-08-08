@@ -47,6 +47,7 @@ export type Employee = {
   password?: string;
   active?: boolean;
   createdAt?: string;
+  hotelId?: string;
 };
 
 export type SaleItem = {
@@ -67,6 +68,7 @@ export type Sale = {
   customerName: string;
   phone: string;
   doctor?: string;
+  table?: string;
   items: SaleItem[];
   sub: number;
   disc: number;
@@ -76,7 +78,9 @@ export type Sale = {
   status: "paid" | "held" | "cancelled";
   cashierId?: string;
   cashierName?: string;
+  hotelId?: string;
 };
+
 
 export type Purchase = {
   id: string;
