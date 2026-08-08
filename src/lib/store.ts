@@ -150,11 +150,20 @@ const SEED_SUPPLIERS: Supplier[] = [
   { id: "S003", name: "Sun Pharma Depot", phone: "9000033333", gstin: "27CCCCC0000C1Z5", city: "Bengaluru", balance: 4200 },
 ];
 
-const SEED_EMPLOYEES: Employee[] = [
-  { id: "E001", name: "Manjju", role: "Admin", phone: "9876543210", salary: 35000, password: "anam@2026", active: true, createdAt: "2026-01-01" },
-  { id: "E002", name: "Ramesh", role: "Cashier", phone: "9876543211", salary: 18000, password: "cashier1", active: true, createdAt: "2026-02-01" },
-  { id: "E003", name: "Lakshmi", role: "Pharmacist", phone: "9876543212", salary: 22000, password: "pharma1", active: true, createdAt: "2026-02-01" },
+const SEED_HOTELS: Hotel[] = [
+  {
+    id: "H001", name: "Hotel Vaishali", loginId: "vaishali", password: "hotel@2026",
+    ownerName: "Ramesh", phone: "7569790229", city: "Hindupur", state: "Andhra Pradesh",
+    plan: "Monthly", active: true, createdAt: "2026-08-06",
+  },
 ];
+
+const SEED_EMPLOYEES: Employee[] = [
+  { id: "E001", name: "Ramesh", role: "Admin", phone: "7569790229", salary: 0, password: "hotel@2026", active: true, createdAt: "2026-01-01", hotelId: "H001" },
+  { id: "E002", name: "Suresh", role: "Cashier", phone: "9876543211", salary: 18000, password: "cashier1", active: true, createdAt: "2026-02-01", hotelId: "H001" },
+  { id: "E003", name: "Lakshmi", role: "Waiter", phone: "9876543212", salary: 14000, password: "waiter1", active: true, createdAt: "2026-02-01", hotelId: "H001" },
+];
+
 
 const SEED_PURCHASES: Purchase[] = [
   {
