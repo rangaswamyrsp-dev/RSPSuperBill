@@ -108,7 +108,7 @@ export type AuditEntry = {
   id: string;
   at: string;
   actor: string;        // "E001 · Manjju"
-  action: "bill.save" | "bill.cancel" | "bill.hold" | "bill.resume" | "stock.adjust" | "medicine.add" | "medicine.update" | "medicine.delete" | "employee.add" | "employee.delete" | "purchase.add" | "login";
+  action: "bill.save" | "bill.cancel" | "bill.hold" | "bill.resume" | "stock.adjust" | "medicine.add" | "medicine.update" | "medicine.delete" | "employee.add" | "employee.delete" | "purchase.add" | "login" | "hotel.add" | "hotel.update" | "hotel.delete" | "item.add" | "item.update" | "item.delete";
   target?: string;
   detail?: string;
 };
