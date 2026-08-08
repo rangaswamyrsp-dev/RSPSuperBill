@@ -1,7 +1,23 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MEDICINES as SEED_MEDICINES, type Medicine } from "@/data/medicines";
+import { SEED_MENU, type MenuItem } from "@/data/menu";
 
-export type { Medicine };
+export type { Medicine, MenuItem };
+
+export type Hotel = {
+  id: string;
+  name: string;
+  loginId: string;
+  password: string;
+  ownerName: string;
+  phone: string;
+  city?: string;
+  state?: string;
+  plan: "Monthly" | "Yearly" | "Trial";
+  active?: boolean;
+  createdAt: string;
+};
+
 
 export type Customer = {
   id: string;
@@ -31,6 +47,7 @@ export type Employee = {
   password?: string;
   active?: boolean;
   createdAt?: string;
+  hotelId?: string;
 };
 
 export type SaleItem = {
@@ -51,6 +68,7 @@ export type Sale = {
   customerName: string;
   phone: string;
   doctor?: string;
+  table?: string;
   items: SaleItem[];
   sub: number;
   disc: number;
@@ -60,7 +78,9 @@ export type Sale = {
   status: "paid" | "held" | "cancelled";
   cashierId?: string;
   cashierName?: string;
+  hotelId?: string;
 };
+
 
 export type Purchase = {
   id: string;
@@ -88,7 +108,7 @@ export type AuditEntry = {
   id: string;
   at: string;
   actor: string;        // "E001 · Manjju"
-  action: "bill.save" | "bill.cancel" | "bill.hold" | "bill.resume" | "stock.adjust" | "medicine.add" | "medicine.update" | "medicine.delete" | "employee.add" | "employee.delete" | "purchase.add" | "login";
+  action: "bill.save" | "bill.cancel" | "bill.hold" | "bill.resume" | "stock.adjust" | "medicine.add" | "medicine.update" | "medicine.delete" | "employee.add" | "employee.delete" | "purchase.add" | "login" | "hotel.add" | "hotel.update" | "hotel.delete" | "item.add" | "item.update" | "item.delete";
   target?: string;
   detail?: string;
 };
@@ -130,11 +150,20 @@ const SEED_SUPPLIERS: Supplier[] = [
   { id: "S003", name: "Sun Pharma Depot", phone: "9000033333", gstin: "27CCCCC0000C1Z5", city: "Bengaluru", balance: 4200 },
 ];
 
-const SEED_EMPLOYEES: Employee[] = [
-  { id: "E001", name: "Manjju", role: "Admin", phone: "9876543210", salary: 35000, password: "anam@2026", active: true, createdAt: "2026-01-01" },
-  { id: "E002", name: "Ramesh", role: "Cashier", phone: "9876543211", salary: 18000, password: "cashier1", active: true, createdAt: "2026-02-01" },
-  { id: "E003", name: "Lakshmi", role: "Pharmacist", phone: "9876543212", salary: 22000, password: "pharma1", active: true, createdAt: "2026-02-01" },
+const SEED_HOTELS: Hotel[] = [
+  {
+    id: "H001", name: "Hotel Vaishali", loginId: "vaishali", password: "hotel@2026",
+    ownerName: "Ramesh", phone: "7569790229", city: "Hindupur", state: "Andhra Pradesh",
+    plan: "Monthly", active: true, createdAt: "2026-08-06",
+  },
 ];
+
+const SEED_EMPLOYEES: Employee[] = [
+  { id: "E001", name: "Ramesh", role: "Admin", phone: "7569790229", salary: 0, password: "hotel@2026", active: true, createdAt: "2026-01-01", hotelId: "H001" },
+  { id: "E002", name: "Suresh", role: "Cashier", phone: "9876543211", salary: 18000, password: "cashier1", active: true, createdAt: "2026-02-01", hotelId: "H001" },
+  { id: "E003", name: "Lakshmi", role: "Waiter", phone: "9876543212", salary: 14000, password: "waiter1", active: true, createdAt: "2026-02-01", hotelId: "H001" },
+];
+
 
 const SEED_PURCHASES: Purchase[] = [
   {
@@ -152,6 +181,8 @@ const SEED_PURCHASES: Purchase[] = [
 ];
 
 type State = {
+  hotels: Hotel[];
+  menuItems: MenuItem[];
   medicines: Medicine[];
   customers: Customer[];
   suppliers: Supplier[];
@@ -166,6 +197,8 @@ type State = {
 const KEY = "rsp_store_v1";
 
 const DEFAULT: State = {
+  hotels: SEED_HOTELS,
+  menuItems: SEED_MENU,
   medicines: SEED_MEDICINES,
   customers: SEED_CUSTOMERS,
   suppliers: SEED_SUPPLIERS,
@@ -187,20 +220,21 @@ function load(): State {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT;
     const parsed = JSON.parse(raw) as Partial<State>;
-    // Migrate: ensure seed admin exists
-    const employees = parsed.employees ?? DEFAULT.employees;
-    if (!employees.find((e) => e.phone === "9876543210")) {
-      employees.unshift(DEFAULT.employees[0]);
-    }
+    // Migrate: make sure at least the demo hotel account + menu exist
+    const hotels = parsed.hotels?.length ? parsed.hotels : DEFAULT.hotels;
+    const menuItems = parsed.menuItems?.length ? parsed.menuItems : DEFAULT.menuItems;
     return {
       ...DEFAULT,
       ...parsed,
-      employees,
+      hotels,
+      menuItems,
+      employees: parsed.employees ?? DEFAULT.employees,
       audit: parsed.audit ?? [],
       held: parsed.held ?? [],
       printer: { ...DEFAULT.printer, ...(parsed.printer ?? {}) },
     };
   } catch {
+
     return DEFAULT;
   }
 }
@@ -249,6 +283,55 @@ function actorLabel(actor?: { id: string; name: string }) {
 }
 
 export const actions = {
+  // ---- SaaS: hotel accounts (super admin only) ----
+  addHotel(h: Omit<Hotel, "id" | "createdAt">, actor?: { id: string; name: string }): Hotel {
+    const n = state.hotels.length + 1;
+    const rec: Hotel = {
+      ...h,
+      id: "H" + n.toString().padStart(3, "0"),
+      active: h.active ?? true,
+      createdAt: new Date().toISOString(),
+    };
+    setState((s) => { s.hotels.unshift(rec); });
+    audit({ actor: actorLabel(actor), action: "hotel.add", target: rec.id, detail: `${rec.name} · ${rec.loginId}` });
+    return rec;
+  },
+  updateHotel(id: string, patch: Partial<Hotel>, actor?: { id: string; name: string }) {
+    setState((s) => {
+      const i = s.hotels.findIndex((x) => x.id === id);
+      if (i >= 0) s.hotels[i] = { ...s.hotels[i], ...patch };
+    });
+    audit({ actor: actorLabel(actor), action: "hotel.update", target: id });
+  },
+  deleteHotel(id: string, actor?: { id: string; name: string }) {
+    setState((s) => {
+      s.hotels = s.hotels.filter((h) => h.id !== id);
+      s.menuItems = s.menuItems.filter((m) => m.hotelId !== id);
+      s.employees = s.employees.filter((e) => e.hotelId !== id);
+    });
+    audit({ actor: actorLabel(actor), action: "hotel.delete", target: id });
+  },
+
+  // ---- Menu items (hotel admin manages their own) ----
+  addMenuItem(m: Omit<MenuItem, "id">, actor?: { id: string; name: string }): MenuItem {
+    const rec: MenuItem = { ...m, active: m.active ?? true, id: "IT" + Date.now().toString().slice(-7) };
+    setState((s) => { s.menuItems.unshift(rec); });
+    audit({ actor: actorLabel(actor), action: "item.add", target: rec.name, detail: `₹${rec.price}` });
+    return rec;
+  },
+  updateMenuItem(id: string, patch: Partial<MenuItem>, actor?: { id: string; name: string }) {
+    setState((s) => {
+      const i = s.menuItems.findIndex((x) => x.id === id);
+      if (i >= 0) s.menuItems[i] = { ...s.menuItems[i], ...patch };
+    });
+    audit({ actor: actorLabel(actor), action: "item.update", target: id });
+  },
+  deleteMenuItem(id: string, actor?: { id: string; name: string }) {
+    setState((s) => { s.menuItems = s.menuItems.filter((m) => m.id !== id); });
+    audit({ actor: actorLabel(actor), action: "item.delete", target: id });
+  },
+
+
   addMedicine(m: Omit<Medicine, "id">, actor?: { id: string; name: string }) {
     setState((s) => {
       s.medicines.unshift({ ...m, id: "M" + Date.now().toString().slice(-6) });

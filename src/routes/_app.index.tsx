@@ -1,549 +1,293 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Search, ScanBarcode, QrCode, Plus, Trash2, Save, Printer, PauseCircle, X,
-  Percent, Keyboard, User, Phone, Stethoscope, UserCheck, PlayCircle,
+  UtensilsCrossed, Search, Plus, Minus, Trash2, Printer, ChevronLeft, ChevronRight, Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import type { Medicine } from "@/data/medicines";
-import { cn } from "@/lib/utils";
-import { actions, useStore, useHydrated } from "@/lib/store";
-import { printReceipt } from "@/lib/print";
-import { BarcodeScanner } from "@/components/app/BarcodeScanner";
+import { actions, useStore, useHydrated, type MenuItem, type SaleItem } from "@/lib/store";
 import { getUser } from "@/lib/auth";
+import { printReceipt } from "@/lib/print";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({
     meta: [
-      { title: "Billing · RSP Medical Billing" },
-      { name: "description", content: "Fast keyboard-driven billing counter for medical stores." },
+      { title: "Billing · RSP Hotel Billing" },
+      { name: "description", content: "Tap an item photo to bill it. Instant totals, cash or UPI payment, and thermal receipt printing for your hotel." },
+      { property: "og:title", content: "Billing · RSP Hotel Billing" },
+      { property: "og:description", content: "Photo-based hotel billing with instant totals and receipt printing." },
     ],
   }),
   component: BillingPage,
 });
 
-type LineItem = Medicine & { qty: number; discount: number };
+const PAGE_SIZE = 10;
 
-function invoiceNo() {
-  return "INV" + Math.floor(10000 + Math.random() * 89999);
-}
+type Line = { item: MenuItem; qty: number };
 
 function BillingPage() {
   const hydrated = useHydrated();
-  const medicines = useStore((s) => s.medicines);
-  const customers = useStore((s) => s.customers);
+  const menuItems = useStore((s) => s.menuItems);
   const printer = useStore((s) => s.printer);
-  const held = useStore((s) => s.held);
-
   const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
   useEffect(() => setMe(getUser()), []);
 
-  const [query, setQuery] = useState("");
-  const [items, setItems] = useState<LineItem[]>([]);
-  const [customer, setCustomer] = useState({ name: "", phone: "", doctor: "" });
-  const [matched, setMatched] = useState<string | null>(null);
-  const [payment, setPayment] = useState("cash");
-  const [inv, setInv] = useState("INV—");
-  const [scanOpen, setScanOpen] = useState(false);
-  const [qrOpen, setQrOpen] = useState(false);
+  const [cat, setCat] = useState("All");
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [table, setTable] = useState("");
+  const [customer, setCustomer] = useState("");
+  const [phone, setPhone] = useState("");
+  const [payment, setPayment] = useState("Cash");
+  const [discPct, setDiscPct] = useState("0");
+  const [lastBill, setLastBill] = useState<string | null>(null);
 
-  useEffect(() => { setInv(invoiceNo()); }, []);
+  const hotelId = me?.hotelId ?? "";
 
-  const today = hydrated
-    ? new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-    : "";
-
-  const suggestions = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return medicines
-      .filter((m) => m.name.toLowerCase().includes(q) || m.batch.toLowerCase().includes(q) || m.id.toLowerCase().includes(q))
-      .slice(0, 6);
-  }, [query, medicines]);
-
-  const addItem = (m: Medicine) => {
-    setItems((prev) => {
-      const found = prev.find((i) => i.id === m.id);
-      if (found) return prev.map((i) => (i.id === m.id ? { ...i, qty: i.qty + 1 } : i));
-      return [...prev, { ...m, qty: 1, discount: 0 }];
-    });
-    setQuery("");
-  };
-
-  const onScan = (code: string) => {
-    const found = medicines.find(
-      (m) => m.id.toLowerCase() === code.toLowerCase() || m.batch.toLowerCase() === code.toLowerCase(),
+  const available = useMemo(
+    () => menuItems.filter((m) => (m.active ?? true) && (!hotelId || m.hotelId === hotelId)),
+    [menuItems, hotelId],
+  );
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(available.map((m) => m.category)))],
+    [available],
+  );
+  const filtered = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return available.filter(
+      (m) => (cat === "All" || m.category === cat) && (!t || m.name.toLowerCase().includes(t)),
     );
-    if (found) {
-      addItem(found);
-      toast.success(`Added ${found.name}`);
-    } else {
-      setQuery(code);
-      toast(`Scanned: ${code} — search opened`);
-    }
-  };
+  }, [available, cat, q]);
 
-  const updateItem = (id: string, patch: Partial<LineItem>) =>
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
-  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, pages - 1);
+  const visible = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
 
-  const onPhoneChange = (phone: string) => {
-    setCustomer((c) => ({ ...c, phone }));
-    const found = customers.find((c) => c.phone === phone.trim());
-    if (found) {
-      setCustomer((c) => ({ ...c, name: found.name, doctor: found.doctor ?? c.doctor, phone }));
-      setMatched(found.id);
-    } else {
-      setMatched(null);
-    }
-  };
+  useEffect(() => setPage(0), [cat, q]);
 
-  const totals = useMemo(() => {
-    let sub = 0, disc = 0, gst = 0;
-    for (const it of items) {
-      const line = it.mrp * it.qty;
-      const d = (line * it.discount) / 100;
-      const taxable = line - d;
-      const g = (taxable * it.gst) / 100;
-      sub += line;
-      disc += d;
-      gst += g;
-    }
-    const beforeRound = sub - disc + gst;
-    const grand = Math.round(beforeRound);
-    return { sub, disc, gst, round: grand - beforeRound, grand };
-  }, [items]);
-
-  const clear = () => {
-    setItems([]);
-    setCustomer({ name: "", phone: "", doctor: "" });
-    setMatched(null);
-    setInv(invoiceNo());
-    setPayment("cash");
-  };
-
-  const actor = me ? { id: me.id, name: me.name } : undefined;
-
-  const buildSale = () => {
-    const cust = actions.upsertCustomerByPhone({
-      name: customer.name, phone: customer.phone, doctor: customer.doctor,
+  const add = (item: MenuItem) => {
+    setLines((prev) => {
+      const i = prev.findIndex((l) => l.item.id === item.id);
+      if (i >= 0) {
+        const next = [...prev];
+        next[i] = { ...next[i], qty: next[i].qty + 1 };
+        return next;
+      }
+      return [...prev, { item, qty: 1 }];
     });
-    return actions.saveSale({
-      customerId: cust.phone ? cust.id : null,
-      customerName: cust.name,
-      phone: cust.phone,
-      doctor: customer.doctor || undefined,
-      items: items.map((it) => {
-        const line = it.mrp * it.qty;
-        const d = (line * it.discount) / 100;
-        const tax = ((line - d) * it.gst) / 100;
-        return {
-          id: it.id, name: it.name, batch: it.batch, qty: it.qty,
-          mrp: it.mrp, gst: it.gst, discount: it.discount,
-          total: +(line - d + tax).toFixed(2),
-        };
-      }),
-      sub: +totals.sub.toFixed(2),
-      disc: +totals.disc.toFixed(2),
-      gst: +totals.gst.toFixed(2),
-      grand: totals.grand,
-      payment,
-    }, actor);
+  };
+  const setQty = (id: string, delta: number) =>
+    setLines((prev) =>
+      prev
+        .map((l) => (l.item.id === id ? { ...l, qty: l.qty + delta } : l))
+        .filter((l) => l.qty > 0),
+    );
+  const remove = (id: string) => setLines((prev) => prev.filter((l) => l.item.id !== id));
+
+  const sub = lines.reduce((t, l) => t + l.item.price * l.qty, 0);
+  const disc = Math.round(sub * (Number(discPct) || 0)) / 100;
+  const grand = Math.max(0, Math.round(sub - disc));
+
+  const saveBill = (print: boolean) => {
+    if (lines.length === 0) return toast.error("Add at least one item");
+    const items: SaleItem[] = lines.map((l) => ({
+      id: l.item.id, name: l.item.name, batch: l.item.category, qty: l.qty,
+      mrp: l.item.price, gst: 0, discount: 0, total: l.item.price * l.qty,
+    }));
+    const sale = actions.saveSale(
+      {
+        customerId: null,
+        customerName: customer.trim() || "Walk-in",
+        phone: phone.trim(),
+        table: table.trim() || undefined,
+        items, sub, disc, gst: 0, grand, payment,
+        hotelId: hotelId || undefined,
+      },
+      me ? { id: me.id, name: me.name } : undefined,
+    );
+    setLastBill(sale.id);
+    setLines([]);
+    setTable("");
+    setCustomer("");
+    setPhone("");
+    setDiscPct("0");
+    toast.success(`Bill ${sale.id} saved · ₹${grand}`);
+    if (print) printReceipt(sale, { ...printer, storeName: me?.store || printer.storeName });
   };
 
-  const saveBill = () => {
-    if (items.length === 0) return toast.error("Add at least one medicine");
-    const sale = buildSale();
-    toast.success(`Bill ${sale.id} saved · ₹${totals.grand.toLocaleString("en-IN")}`);
-    if (printer.autoPrint) printReceipt(sale, printer);
-    clear();
-  };
-
-  const printBill = () => {
-    if (items.length === 0) return toast.error("Add at least one medicine");
-    const sale = buildSale();
-    printReceipt(sale, printer);
-    toast.success(`Bill ${sale.id} · sent to printer`);
-    clear();
-  };
-
-  const holdBill = () => {
-    if (items.length === 0) return toast.error("Nothing to hold");
-    const rec = actions.holdBill({
-      customerName: customer.name || "Walk-in",
-      phone: customer.phone,
-      doctor: customer.doctor || undefined,
-      items: items.map((it) => ({
-        id: it.id, name: it.name, batch: it.batch, qty: it.qty,
-        mrp: it.mrp, gst: it.gst, discount: it.discount, company: it.company,
-      })),
-    }, actor);
-    toast.success(`Bill held · ${rec.id}`);
-    clear();
-  };
-
-  const resumeHeld = (id: string) => {
-    const found = actions.resumeHeld(id);
-    if (!found) return;
-    setCustomer({ name: found.customerName, phone: found.phone, doctor: found.doctor ?? "" });
-    setItems(found.items.map((it) => ({
-      id: it.id, name: it.name, batch: it.batch, mrp: it.mrp, gst: it.gst,
-      stock: 0, expiry: "", company: it.company ?? "",
-      qty: it.qty, discount: it.discount,
-    })));
-    toast.success(`Resumed held bill ${id}`);
-  };
+  if (!hydrated) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="p-4 lg:p-6 grid gap-4 xl:grid-cols-[1fr_360px]">
-      {/* MAIN COLUMN */}
-      <div className="space-y-4 min-w-0">
-        {/* Header meta */}
-        <Card className="p-4">
-          <div className="flex flex-wrap items-center gap-4 justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 grid place-items-center rounded-lg bg-primary/10 text-primary">
-                <Stethoscope className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground">Invoice No.</div>
-                <div className="font-semibold tracking-tight">{inv}</div>
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Date</div>
-              <div className="font-medium">{today || "—"}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Cashier</div>
-              <div className="font-medium">{me ? `${me.id} · ${me.name}` : "—"}</div>
-              <div className="text-[11px] text-muted-foreground">{me?.role}</div>
-            </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <PauseCircle className="h-3.5 w-3.5" /> Held ({held.length})
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 p-0">
-                <div className="px-3 py-2 border-b text-sm font-semibold">Held bills</div>
-                <div className="max-h-72 overflow-y-auto divide-y">
-                  {held.length === 0 && <div className="p-4 text-sm text-muted-foreground text-center">No bills on hold.</div>}
-                  {held.map((h) => (
-                    <button key={h.id} onClick={() => resumeHeld(h.id)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted text-left">
-                      <PlayCircle className="h-4 w-4 text-primary" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{h.id} · {h.customerName || "Walk-in"}</div>
-                        <div className="text-xs text-muted-foreground">{h.items.length} items · {new Date(h.at).toLocaleTimeString("en-IN")}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Badge variant="secondary" className="gap-1.5">
-              <Keyboard className="h-3.5 w-3.5" /> F2 New · F9 Save · F10 Print
-            </Badge>
+    <div className="flex flex-col lg:flex-row h-full min-h-0">
+      {/* Item grid */}
+      <div className="flex-1 min-w-0 p-4 sm:p-6 space-y-4 overflow-auto">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" /> Billing
+            </h1>
+            <p className="text-sm text-muted-foreground">Tap an item photo to add it to the bill.</p>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 mt-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Phone (auto-links customer)</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="+91"
-                  value={customer.phone}
-                  onChange={(e) => onPhoneChange(e.target.value)}
-                />
-                {matched && (
-                  <UserCheck className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                )}
-              </div>
-              {matched ? (
-                <div className="text-[11px] text-primary flex items-center gap-1">
-                  <UserCheck className="h-3 w-3" /> Existing customer linked
-                </div>
-              ) : customer.phone.trim() ? (
-                <div className="text-[11px] text-[color:var(--info)]">New customer — will be created</div>
-              ) : (
-                <div className="text-[11px] text-muted-foreground">Walk-in if empty</div>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Customer name</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Walk-in customer"
-                  value={customer.name}
-                  onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Doctor</Label>
-              <div className="relative">
-                <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Dr. Referred by"
-                  value={customer.doctor}
-                  onChange={(e) => setCustomer({ ...customer, doctor: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Search */}
-        <Card className="p-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative flex-1 min-w-[220px]">
+          <div className="flex items-center gap-2">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                autoFocus
-                className="pl-9 h-11 text-base"
-                placeholder="Search medicine name, salt, batch or scan…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && suggestions[0]) addItem(suggestions[0]);
-                }}
-              />
+              <Input className="pl-9 w-44" placeholder="Search item" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
-            <Button variant="outline" className="h-11" onClick={() => setScanOpen(true)}>
-              <ScanBarcode className="h-4 w-4 mr-1.5" /> Barcode
-            </Button>
-            <Button variant="outline" className="h-11" onClick={() => setQrOpen(true)}>
-              <QrCode className="h-4 w-4 mr-1.5" /> QR
-            </Button>
+            <Select value={cat} onValueChange={setCat}>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-
-          {suggestions.length > 0 && (
-            <div className="mt-2 rounded-lg border bg-card divide-y">
-              {suggestions.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => addItem(m)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted text-left"
-                >
-                  <div>
-                    <div className="font-medium">{m.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {m.company} · Batch {m.batch} · Exp {m.expiry}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        "text-xs px-2 py-0.5 rounded",
-                        m.stock < 20
-                          ? "bg-[color:var(--warning)]/15 text-[color:var(--warning)]"
-                          : "bg-primary/10 text-primary",
-                      )}
-                    >
-                      Stock {m.stock}
-                    </span>
-                    <span className="text-sm font-semibold">₹{m.mrp}</span>
-                    <Plus className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        {/* Line items */}
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead>Medicine</TableHead>
-                <TableHead className="w-24">Batch</TableHead>
-                <TableHead className="w-20 text-center">Qty</TableHead>
-                <TableHead className="w-24 text-right">MRP</TableHead>
-                <TableHead className="w-24 text-center">Disc %</TableHead>
-                <TableHead className="w-20 text-center">GST</TableHead>
-                <TableHead className="w-28 text-right">Total</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
-                    <Search className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                    Search or scan a medicine to add to the bill.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items.map((it) => {
-                  const line = it.mrp * it.qty;
-                  const d = (line * it.discount) / 100;
-                  const tax = ((line - d) * it.gst) / 100;
-                  const total = line - d + tax;
-                  return (
-                    <TableRow key={it.id}>
-                      <TableCell>
-                        <div className="font-medium">{it.name}</div>
-                        <div className="text-xs text-muted-foreground">{it.company}</div>
-                      </TableCell>
-                      <TableCell className="text-sm">{it.batch}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={it.qty}
-                          onChange={(e) =>
-                            updateItem(it.id, { qty: Math.max(1, Number(e.target.value) || 1) })
-                          }
-                          className="h-8 text-center"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">₹{it.mrp}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={it.discount}
-                          onChange={(e) =>
-                            updateItem(it.id, { discount: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })
-                          }
-                          className="h-8 text-center"
-                        />
-                      </TableCell>
-                      <TableCell className="text-center text-sm">{it.gst}%</TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">
-                        ₹{total.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeItem(it.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-          </div>
-        </Card>
-      </div>
-
-      {/* SUMMARY / SIDEBAR */}
-      <div className="space-y-4 xl:sticky xl:top-0 xl:self-start">
-        <Card className="p-5">
-          <div className="text-sm font-semibold mb-3">Bill Summary</div>
-          <div className="space-y-2 text-sm">
-            <Row label="Sub Total" value={totals.sub} />
-            <Row label="Discount" value={-totals.disc} accent="warning" />
-            <Row label="GST" value={totals.gst} />
-            <Row label="Round Off" value={totals.round} muted />
-            <div className="border-t pt-3 mt-2 flex items-center justify-between">
-              <span className="font-semibold">Grand Total</span>
-              <span className="text-2xl font-bold tracking-tight text-primary tabular-nums">
-                ₹{totals.grand.toLocaleString("en-IN")}
-              </span>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <div className="text-sm font-semibold mb-3">Payment Method</div>
-          <RadioGroup value={payment} onValueChange={setPayment} className="grid grid-cols-2 gap-2">
-            {[
-              { v: "cash", l: "Cash" },
-              { v: "upi", l: "UPI" },
-              { v: "phonepe", l: "PhonePe" },
-              { v: "gpay", l: "Google Pay" },
-              { v: "paytm", l: "Paytm" },
-              { v: "card", l: "Card" },
-            ].map((p) => (
-              <label
-                key={p.v}
-                className={cn(
-                  "flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
-                  payment === p.v ? "border-primary bg-primary/5" : "hover:bg-muted",
-                )}
-              >
-                <RadioGroupItem value={p.v} />
-                {p.l}
-              </label>
-            ))}
-          </RadioGroup>
-        </Card>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Button className="h-11" onClick={saveBill}>
-            <Save className="h-4 w-4 mr-1.5" /> Save Bill
-          </Button>
-          <Button variant="outline" className="h-11" onClick={printBill}>
-            <Printer className="h-4 w-4 mr-1.5" /> Save & Print
-          </Button>
-          <Button variant="outline" className="h-11" onClick={holdBill}>
-            <PauseCircle className="h-4 w-4 mr-1.5" /> Hold
-          </Button>
-          <Button variant="ghost" className="h-11 text-destructive hover:text-destructive" onClick={clear}>
-            <X className="h-4 w-4 mr-1.5" /> Cancel
-          </Button>
         </div>
 
-        <Card className="p-4 bg-[color:var(--warning)]/10 border-[color:var(--warning)]/30">
-          <div className="flex items-start gap-2 text-sm">
-            <Percent className="h-4 w-4 mt-0.5 text-[color:var(--warning)]" />
-            <div>
-              <div className="font-medium">Printer: {printer.paperSize} thermal</div>
-              <div className="text-muted-foreground text-xs mt-0.5">
-                Change paper size, header and footer in Settings → Printer.
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+          {visible.map((m) => (
+            <button
+              key={m.id} type="button" onClick={() => add(m)}
+              className="group text-left rounded-xl border bg-card overflow-hidden transition hover:border-primary hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <div className="h-28 w-full bg-muted grid place-items-center overflow-hidden">
+                {m.photo ? (
+                  <img src={m.photo} alt={m.name} loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />
+                ) : (
+                  <UtensilsCrossed className="h-7 w-7 text-muted-foreground" />
+                )}
               </div>
-            </div>
+              <div className="p-2.5">
+                <div className="text-sm font-medium truncate" title={m.name}>{m.name}</div>
+                <div className="mt-0.5 flex items-center justify-between">
+                  <span className="text-sm font-semibold">₹{m.price}</span>
+                  <Badge variant="secondary" className="text-[10px]">{m.category}</Badge>
+                </div>
+              </div>
+            </button>
+          ))}
+          {visible.length === 0 && (
+            <Card className="col-span-full p-8 text-center text-sm text-muted-foreground">
+              No items. Add them from Menu Items.
+            </Card>
+          )}
+        </div>
+
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex items-center justify-center gap-3">
+            <Button variant="outline" size="sm" disabled={current === 0} onClick={() => setPage(current - 1)}>
+              <ChevronLeft className="h-4 w-4" /> Prev
+            </Button>
+            <span className="text-sm text-muted-foreground">Page {current + 1} of {pages} · 10 items per page</span>
+            <Button variant="outline" size="sm" disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-        </Card>
+        )}
       </div>
 
-      <BarcodeScanner open={scanOpen} onOpenChange={setScanOpen} onDetected={onScan} mode="barcode" />
-      <BarcodeScanner open={qrOpen} onOpenChange={setQrOpen} onDetected={onScan} mode="qr" />
+      {/* Bill panel */}
+      <aside className="w-full lg:w-[360px] shrink-0 border-t lg:border-t-0 lg:border-l bg-card flex flex-col">
+        <div className="p-4 border-b space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Table / Room</Label>
+              <Input value={table} onChange={(e) => setTable(e.target.value)} placeholder="T1" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Payment</Label>
+              <Select value={payment} onValueChange={setPayment}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="UPI">UPI</SelectItem>
+                  <SelectItem value="Card">Card</SelectItem>
+                  <SelectItem value="Razorpay">Razorpay</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Customer</Label>
+              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Walk-in" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Phone</Label>
+              <Input inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto divide-y">
+          {lines.map((l) => (
+            <div key={l.item.id} className="flex items-center gap-2 p-3">
+              <div className="h-10 w-10 shrink-0 rounded-md bg-muted overflow-hidden grid place-items-center">
+                {l.item.photo ? (
+                  <img src={l.item.photo} alt={l.item.name} className="h-full w-full object-cover" />
+                ) : (
+                  <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium truncate">{l.item.name}</div>
+                <div className="text-xs text-muted-foreground">₹{l.item.price} × {l.qty}</div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.item.id, -1)}>
+                  <Minus className="h-3.5 w-3.5" />
+                </Button>
+                <span className="w-6 text-center text-sm">{l.qty}</span>
+                <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.item.id, 1)}>
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="w-16 text-right text-sm font-semibold">₹{l.item.price * l.qty}</div>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(l.item.id)}>
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </div>
+          ))}
+          {lines.length === 0 && (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              No items yet. Tap a photo on the left.
+            </div>
+          )}
+        </div>
+
+        <div className="border-t p-4 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Subtotal</span><span>₹{sub.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Discount %</span>
+            <Input
+              className="h-8 w-20 text-right" inputMode="decimal"
+              value={discPct} onChange={(e) => setDiscPct(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Discount</span><span>− ₹{disc.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-baseline border-t pt-2">
+            <span className="font-medium">Amount</span>
+            <span className="text-2xl font-semibold">₹{grand.toFixed(2)}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Button variant="outline" onClick={() => saveBill(false)}>Save bill</Button>
+            <Button onClick={() => saveBill(true)}>
+              <Printer className="h-4 w-4 mr-1" /> Save & print
+            </Button>
+          </div>
+          {lastBill && (
+            <p className="text-center text-xs text-muted-foreground">Last bill: {lastBill}</p>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
-
-function Row({
-  label, value, accent, muted,
-}: { label: string; value: number; accent?: "warning"; muted?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className={muted ? "text-muted-foreground" : ""}>{label}</span>
-      <span
-        className={cn(
-          "tabular-nums",
-          accent === "warning" && "text-[color:var(--warning)]",
-          muted && "text-muted-foreground",
-        )}
-      >
-        ₹{value.toFixed(2)}
-      </span>
-    </div>
-  );
-}
-
