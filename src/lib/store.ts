@@ -1,7 +1,23 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MEDICINES as SEED_MEDICINES, type Medicine } from "@/data/medicines";
+import { SEED_MENU, type MenuItem } from "@/data/menu";
 
-export type { Medicine };
+export type { Medicine, MenuItem };
+
+export type Hotel = {
+  id: string;
+  name: string;
+  loginId: string;
+  password: string;
+  ownerName: string;
+  phone: string;
+  city?: string;
+  state?: string;
+  plan: "Monthly" | "Yearly" | "Trial";
+  active?: boolean;
+  createdAt: string;
+};
+
 
 export type Customer = {
   id: string;
