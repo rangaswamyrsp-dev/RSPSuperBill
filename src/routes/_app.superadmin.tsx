@@ -253,16 +253,45 @@ function SuperAdminPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New hotel account</DialogTitle>
-            <DialogDescription>The hotel owner will use this User ID and Password to open the software.</DialogDescription>
+            <DialogTitle>New business account</DialogTitle>
+            <DialogDescription>The owner will use this User ID and Password to open the software.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Hotel name</Label>
+              <Label>Business name</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Hotel Vaishali" />
             </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Business type</Label>
+              <Select value={form.businessType} onValueChange={(v) => pickType(v as BusinessType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {labelsFor(form.businessType).billingMode === "photo"
+                  ? "Billing shows item photos — good for hotels and bakeries."
+                  : "Billing uses a search bar / barcode scan — good for medical and supermarket."}
+              </p>
+            </div>
+            <div className="sm:col-span-2 space-y-2 rounded-md border p-3">
+              <div className="text-sm font-medium">Features for this customer</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {FEATURE_LIST.map((f) => (
+                  <label key={f.key} className="flex items-start gap-2 text-sm">
+                    <Checkbox checked={form.features.includes(f.key)} onCheckedChange={() => toggleNew(f.key)} />
+                    <span>
+                      {f.label}
+                      <span className="block text-xs text-muted-foreground">{f.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Owner name</Label>
               <Input value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} />
