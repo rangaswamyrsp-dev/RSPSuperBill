@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2, Menu, AlertTriangle, PauseCircle, CalendarClock } from "lucide-react";
+import { Search, MoreVertical, LogOut, UserCog, Bell, Settings2, Menu, AlertTriangle, PauseCircle, CalendarClock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,12 +20,15 @@ import { getUser, logout, updateStoredUser } from "@/lib/auth";
 import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 import { SidebarBrand, SidebarNav } from "./AppSidebar";
+import { useSidebarHidden, toggleSidebar } from "@/lib/account";
 
 export function AppHeader() {
   const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [name, setName] = useState("");
   const navigate = useNavigate();
+  const sidebarHidden = useSidebarHidden();
+
 
   const medicines = useStore((s) => s.medicines);
   const held = useStore((s) => s.held);
@@ -58,7 +61,7 @@ export function AppHeader() {
   const initials = (user?.name ?? "  ").split(" ").map((s) => s[0]).slice(0, 2).join("") || " ";
 
   return (
-    <header className="h-16 shrink-0 border-b bg-card flex items-center gap-2 px-3 lg:px-6">
+    <header className="h-16 shrink-0 border-b bg-card flex items-center gap-2 px-3 lg:px-6 print:hidden">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="lg:hidden">
@@ -71,10 +74,19 @@ export function AppHeader() {
           <SidebarNav />
         </SheetContent>
       </Sheet>
+      <Button
+        variant="ghost" size="icon" className="hidden lg:inline-flex"
+        title={sidebarHidden ? "Show menu" : "Hide menu"}
+        aria-label={sidebarHidden ? "Show menu" : "Hide menu"}
+        onClick={toggleSidebar}
+      >
+        {sidebarHidden ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+      </Button>
       <div className="relative flex-1 max-w-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Global search — medicines, invoices, customers…" className="pl-9 h-10 bg-background" />
+        <Input placeholder="Global search — products, invoices, customers…" className="pl-9 h-10 bg-background" />
       </div>
+
       <div className="ml-auto flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>

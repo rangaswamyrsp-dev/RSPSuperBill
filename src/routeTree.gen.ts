@@ -23,12 +23,14 @@ import { Route as AppItemsRouteImport } from './routes/_app.items'
 import { Route as AppInventoryRouteImport } from './routes/_app.inventory'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
 import { Route as AppGstRouteImport } from './routes/_app.gst'
+import { Route as AppFinanceRouteImport } from './routes/_app.finance'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCustomersRouteImport } from './routes/_app.customers'
 import { Route as AppBarcodeRouteImport } from './routes/_app.barcode'
 import { Route as AppBackupRouteImport } from './routes/_app.backup'
 import { Route as AppAuditRouteImport } from './routes/_app.audit'
+import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
 import { Route as AppAccountsRouteImport } from './routes/_app.accounts'
 
 const LoginRoute = LoginRouteImport.update({
@@ -100,6 +102,11 @@ const AppGstRoute = AppGstRouteImport.update({
   path: '/gst',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFinanceRoute = AppFinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEmployeesRoute = AppEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
@@ -130,6 +137,11 @@ const AppAuditRoute = AppAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAttendanceRoute = AppAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountsRoute = AppAccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -140,12 +152,14 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/accounts': typeof AppAccountsRoute
+  '/attendance': typeof AppAttendanceRoute
   '/audit': typeof AppAuditRoute
   '/backup': typeof AppBackupRoute
   '/barcode': typeof AppBarcodeRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/employees': typeof AppEmployeesRoute
+  '/finance': typeof AppFinanceRoute
   '/gst': typeof AppGstRoute
   '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
@@ -161,12 +175,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/accounts': typeof AppAccountsRoute
+  '/attendance': typeof AppAttendanceRoute
   '/audit': typeof AppAuditRoute
   '/backup': typeof AppBackupRoute
   '/barcode': typeof AppBarcodeRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/employees': typeof AppEmployeesRoute
+  '/finance': typeof AppFinanceRoute
   '/gst': typeof AppGstRoute
   '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
@@ -185,12 +201,14 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/accounts': typeof AppAccountsRoute
+  '/_app/attendance': typeof AppAttendanceRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/backup': typeof AppBackupRoute
   '/_app/barcode': typeof AppBarcodeRoute
   '/_app/customers': typeof AppCustomersRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/employees': typeof AppEmployeesRoute
+  '/_app/finance': typeof AppFinanceRoute
   '/_app/gst': typeof AppGstRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/inventory': typeof AppInventoryRoute
@@ -210,12 +228,14 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/accounts'
+    | '/attendance'
     | '/audit'
     | '/backup'
     | '/barcode'
     | '/customers'
     | '/dashboard'
     | '/employees'
+    | '/finance'
     | '/gst'
     | '/help'
     | '/inventory'
@@ -231,12 +251,14 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/accounts'
+    | '/attendance'
     | '/audit'
     | '/backup'
     | '/barcode'
     | '/customers'
     | '/dashboard'
     | '/employees'
+    | '/finance'
     | '/gst'
     | '/help'
     | '/inventory'
@@ -254,12 +276,14 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/accounts'
+    | '/_app/attendance'
     | '/_app/audit'
     | '/_app/backup'
     | '/_app/barcode'
     | '/_app/customers'
     | '/_app/dashboard'
     | '/_app/employees'
+    | '/_app/finance'
     | '/_app/gst'
     | '/_app/help'
     | '/_app/inventory'
@@ -379,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGstRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/finance': {
+      id: '/_app/finance'
+      path: '/finance'
+      fullPath: '/finance'
+      preLoaderRoute: typeof AppFinanceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/employees': {
       id: '/_app/employees'
       path: '/employees'
@@ -421,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/attendance': {
+      id: '/_app/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AppAttendanceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/accounts': {
       id: '/_app/accounts'
       path: '/accounts'
@@ -433,12 +471,14 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAccountsRoute: typeof AppAccountsRoute
+  AppAttendanceRoute: typeof AppAttendanceRoute
   AppAuditRoute: typeof AppAuditRoute
   AppBackupRoute: typeof AppBackupRoute
   AppBarcodeRoute: typeof AppBarcodeRoute
   AppCustomersRoute: typeof AppCustomersRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
+  AppFinanceRoute: typeof AppFinanceRoute
   AppGstRoute: typeof AppGstRoute
   AppHelpRoute: typeof AppHelpRoute
   AppInventoryRoute: typeof AppInventoryRoute
@@ -455,12 +495,14 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountsRoute: AppAccountsRoute,
+  AppAttendanceRoute: AppAttendanceRoute,
   AppAuditRoute: AppAuditRoute,
   AppBackupRoute: AppBackupRoute,
   AppBarcodeRoute: AppBarcodeRoute,
   AppCustomersRoute: AppCustomersRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppEmployeesRoute: AppEmployeesRoute,
+  AppFinanceRoute: AppFinanceRoute,
   AppGstRoute: AppGstRoute,
   AppHelpRoute: AppHelpRoute,
   AppInventoryRoute: AppInventoryRoute,

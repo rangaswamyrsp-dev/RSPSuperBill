@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Plus, Search, Trash2, Copy, Power, RefreshCw, KeyRound } from "lucide-react";
+import { Building2, Plus, Search, Trash2, Copy, Power, RefreshCw, KeyRound, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,17 +11,22 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { actions, useStore, useHydrated, type Hotel } from "@/lib/store";
 import { getUser, generatePassword } from "@/lib/auth";
+import {
+  BUSINESS_TYPES, DEFAULT_FEATURES, FEATURE_LIST, labelsFor,
+  type BusinessType, type FeatureKey,
+} from "@/lib/business";
 
 export const Route = createFileRoute("/_app/superadmin")({
   head: () => ({
     meta: [
-      { title: "Hotel Accounts · RSP Hotel Billing SaaS" },
-      { name: "description", content: "Super admin console to create hotel accounts, issue user IDs and passwords, and manage subscriptions." },
-      { property: "og:title", content: "Hotel Accounts · RSP Hotel Billing SaaS" },
-      { property: "og:description", content: "Create hotel accounts and issue login credentials for each customer." },
+      { title: "Business Accounts · RSP Billing SaaS" },
+      { name: "description", content: "Super admin console to create hotel, medical, supermarket and retail accounts, pick their features, and issue user IDs and passwords." },
+      { property: "og:title", content: "Business Accounts · RSP Billing SaaS" },
+      { property: "og:description", content: "Create customer accounts, choose their business type and features, and issue login credentials." },
     ],
   }),
   component: SuperAdminPage,
@@ -30,7 +35,10 @@ export const Route = createFileRoute("/_app/superadmin")({
 const EMPTY = {
   name: "", ownerName: "", phone: "", city: "", state: "Andhra Pradesh",
   loginId: "", password: "", plan: "Monthly" as Hotel["plan"],
+  businessType: "Hotel" as BusinessType,
+  features: DEFAULT_FEATURES.Hotel as FeatureKey[],
 };
+
 
 function SuperAdminPage() {
   const hydrated = useHydrated();
@@ -43,6 +51,23 @@ function SuperAdminPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [created, setCreated] = useState<Hotel | null>(null);
+  const [featFor, setFeatFor] = useState<Hotel | null>(null);
+  const [featSel, setFeatSel] = useState<FeatureKey[]>([]);
+
+  const toggleNew = (k: FeatureKey) =>
+    setForm((f) => ({
+      ...f,
+      features: f.features.includes(k) ? f.features.filter((x) => x !== k) : [...f.features, k],
+    }));
+
+  const pickType = (t: BusinessType) =>
+    setForm((f) => ({ ...f, businessType: t, features: DEFAULT_FEATURES[t] }));
+
+  const openFeatures = (h: Hotel) => {
+    setFeatFor(h);
+    setFeatSel(h.features?.length ? h.features : DEFAULT_FEATURES[h.businessType ?? "Hotel"]);
+  };
+
 
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -102,11 +127,12 @@ function SuperAdminPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" /> Hotel Accounts
+            <Building2 className="h-5 w-5 text-primary" /> Business Accounts
           </h1>
           <p className="text-sm text-muted-foreground">
-            Create a hotel account, give the owner their User ID and Password. Each hotel's data stays separate.
+            Create an account, pick the business type and the exact features they need. Each customer's data stays separate.
           </p>
+
         </div>
         <Button onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4 mr-1" /> New hotel account
@@ -139,10 +165,11 @@ function SuperAdminPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Hotel</TableHead>
+              <TableHead>Business</TableHead>
               <TableHead>Owner</TableHead>
               <TableHead>User ID</TableHead>
               <TableHead>Password</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -161,6 +188,13 @@ function SuperAdminPage() {
                 </TableCell>
                 <TableCell className="font-mono text-xs">{h.loginId}</TableCell>
                 <TableCell className="font-mono text-xs">{h.password}</TableCell>
+                <TableCell>
+                  <div>{h.businessType ?? "Hotel"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {(h.features?.length ?? DEFAULT_FEATURES[h.businessType ?? "Hotel"].length)} modules ·{" "}
+                    {labelsFor(h.businessType).billingMode === "photo" ? "photo billing" : "search billing"}
+                  </div>
+                </TableCell>
                 <TableCell>{h.plan}</TableCell>
                 <TableCell>
                   <Badge variant={(h.active ?? true) ? "default" : "secondary"}>
@@ -168,9 +202,13 @@ function SuperAdminPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right whitespace-nowrap">
+                  <Button size="icon" variant="ghost" title="Choose features" onClick={() => openFeatures(h)}>
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </Button>
                   <Button size="icon" variant="ghost" title="Copy login details" onClick={() => copyCreds(h)}>
                     <Copy className="h-4 w-4" />
                   </Button>
+
                   <Button
                     size="icon" variant="ghost" title="Reset password"
                     onClick={() => {
@@ -205,7 +243,7 @@ function SuperAdminPage() {
             ))}
             {list.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
                   No hotel accounts yet.
                 </TableCell>
               </TableRow>
@@ -215,16 +253,45 @@ function SuperAdminPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New hotel account</DialogTitle>
-            <DialogDescription>The hotel owner will use this User ID and Password to open the software.</DialogDescription>
+            <DialogTitle>New business account</DialogTitle>
+            <DialogDescription>The owner will use this User ID and Password to open the software.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Hotel name</Label>
+              <Label>Business name</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Hotel Vaishali" />
             </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Business type</Label>
+              <Select value={form.businessType} onValueChange={(v) => pickType(v as BusinessType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {labelsFor(form.businessType).billingMode === "photo"
+                  ? "Billing shows item photos — good for hotels and bakeries."
+                  : "Billing uses a search bar / barcode scan — good for medical and supermarket."}
+              </p>
+            </div>
+            <div className="sm:col-span-2 space-y-2 rounded-md border p-3">
+              <div className="text-sm font-medium">Features for this customer</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {FEATURE_LIST.map((f) => (
+                  <label key={f.key} className="flex items-start gap-2 text-sm">
+                    <Checkbox checked={form.features.includes(f.key)} onCheckedChange={() => toggleNew(f.key)} />
+                    <span>
+                      {f.label}
+                      <span className="block text-xs text-muted-foreground">{f.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Owner name</Label>
               <Input value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })} />
@@ -278,14 +345,16 @@ function SuperAdminPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Account created</DialogTitle>
-            <DialogDescription>Share these details with the hotel owner.</DialogDescription>
+            <DialogDescription>Share these details with the owner.</DialogDescription>
           </DialogHeader>
           {created && (
             <div className="rounded-lg border bg-muted/40 p-4 text-sm space-y-1">
               <div className="font-medium">{created.name}</div>
               <div>User ID: <span className="font-mono">{created.loginId}</span></div>
               <div>Password: <span className="font-mono">{created.password}</span></div>
-              <div className="text-xs text-muted-foreground">Plan: {created.plan}</div>
+              <div className="text-xs text-muted-foreground">
+                {created.businessType ?? "Hotel"} · Plan: {created.plan}
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -294,6 +363,68 @@ function SuperAdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!featFor} onOpenChange={(v) => !v && setFeatFor(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Features — {featFor?.name}</DialogTitle>
+            <DialogDescription>Tick only the modules this customer needs. Unticked modules disappear from their menu.</DialogDescription>
+          </DialogHeader>
+          {featFor && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Business type</Label>
+                <Select
+                  value={featFor.businessType ?? "Hotel"}
+                  onValueChange={(v) => {
+                    setFeatFor({ ...featFor, businessType: v as BusinessType });
+                    setFeatSel(DEFAULT_FEATURES[v as BusinessType]);
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 rounded-md border p-3">
+                {FEATURE_LIST.map((f) => (
+                  <label key={f.key} className="flex items-start gap-2 text-sm">
+                    <Checkbox
+                      checked={featSel.includes(f.key)}
+                      onCheckedChange={() =>
+                        setFeatSel((s) => (s.includes(f.key) ? s.filter((x) => x !== f.key) : [...s, f.key]))
+                      }
+                    />
+                    <span>
+                      {f.label}
+                      <span className="block text-xs text-muted-foreground">{f.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeatFor(null)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!featFor) return;
+                actions.updateHotel(
+                  featFor.id,
+                  { businessType: featFor.businessType ?? "Hotel", features: featSel },
+                  me ? { id: me.id, name: me.name } : undefined,
+                );
+                toast.success("Features updated");
+                setFeatFor(null);
+              }}
+            >
+              Save features
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
