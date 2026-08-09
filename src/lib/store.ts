@@ -1,8 +1,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MEDICINES as SEED_MEDICINES, type Medicine } from "@/data/medicines";
 import { SEED_MENU, type MenuItem } from "@/data/menu";
+import { DEFAULT_FEATURES, type BusinessType, type FeatureKey } from "@/lib/business";
 
 export type { Medicine, MenuItem };
+
 
 export type Hotel = {
   id: string;
@@ -14,9 +16,47 @@ export type Hotel = {
   city?: string;
   state?: string;
   plan: "Monthly" | "Yearly" | "Trial";
+  businessType?: BusinessType;
+  features?: FeatureKey[];
   active?: boolean;
   createdAt: string;
 };
+
+export type FinanceEntry = {
+  id: string;
+  hotelId: string;
+  date: string;          // yyyy-mm-dd
+  kind: "income" | "expense";
+  title: string;
+  category: string;
+  amount: number;
+  payment: string;       // Cash / UPI / Card / Bank
+  note?: string;
+};
+
+export type Attendance = {
+  id: string;
+  hotelId: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;          // yyyy-mm-dd
+  status: "full" | "half" | "absent" | "leave";
+  note?: string;
+};
+
+export type SalaryPayment = {
+  id: string;
+  hotelId: string;
+  employeeId: string;
+  employeeName: string;
+  month: string;         // yyyy-mm
+  amount: number;
+  bonus: number;
+  deduction: number;
+  paidOn: string;
+  payment: string;
+};
+
 
 
 export type Customer = {
@@ -108,7 +148,7 @@ export type AuditEntry = {
   id: string;
   at: string;
   actor: string;        // "E001 · Manjju"
-  action: "bill.save" | "bill.cancel" | "bill.hold" | "bill.resume" | "stock.adjust" | "medicine.add" | "medicine.update" | "medicine.delete" | "employee.add" | "employee.delete" | "purchase.add" | "login" | "hotel.add" | "hotel.update" | "hotel.delete" | "item.add" | "item.update" | "item.delete";
+  action: "bill.save" | "bill.cancel" | "bill.hold" | "bill.resume" | "stock.adjust" | "medicine.add" | "medicine.update" | "medicine.delete" | "employee.add" | "employee.delete" | "purchase.add" | "login" | "hotel.add" | "hotel.update" | "hotel.delete" | "item.add" | "item.update" | "item.delete" | "finance.add" | "finance.delete" | "attendance.mark" | "salary.pay";
   target?: string;
   detail?: string;
 };
@@ -154,9 +194,11 @@ const SEED_HOTELS: Hotel[] = [
   {
     id: "H001", name: "Hotel Vaishali", loginId: "vaishali", password: "hotel@2026",
     ownerName: "Ramesh", phone: "7569790229", city: "Hindupur", state: "Andhra Pradesh",
-    plan: "Monthly", active: true, createdAt: "2026-08-06",
+    plan: "Monthly", businessType: "Hotel", features: DEFAULT_FEATURES.Hotel,
+    active: true, createdAt: "2026-08-06",
   },
 ];
+
 
 const SEED_EMPLOYEES: Employee[] = [
   { id: "E001", name: "Ramesh", role: "Admin", phone: "7569790229", salary: 0, password: "hotel@2026", active: true, createdAt: "2026-01-01", hotelId: "H001" },
@@ -189,6 +231,9 @@ type State = {
   employees: Employee[];
   sales: Sale[];
   purchases: Purchase[];
+  finance: FinanceEntry[];
+  attendance: Attendance[];
+  salaries: SalaryPayment[];
   printer: PrinterSettings;
   audit: AuditEntry[];
   held: HeldBill[];
@@ -205,6 +250,9 @@ const DEFAULT: State = {
   employees: SEED_EMPLOYEES,
   sales: [],
   purchases: SEED_PURCHASES,
+  finance: [],
+  attendance: [],
+  salaries: [],
   printer: DEFAULT_PRINTER,
   audit: [],
   held: [],
@@ -220,8 +268,13 @@ function load(): State {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT;
     const parsed = JSON.parse(raw) as Partial<State>;
-    // Migrate: make sure at least the demo hotel account + menu exist
-    const hotels = parsed.hotels?.length ? parsed.hotels : DEFAULT.hotels;
+    // Migrate: make sure at least the demo account + menu exist, and that every
+    // account has a business type + feature list.
+    const hotels = (parsed.hotels?.length ? parsed.hotels : DEFAULT.hotels).map((h) => ({
+      ...h,
+      businessType: h.businessType ?? "Hotel",
+      features: h.features?.length ? h.features : DEFAULT_FEATURES[h.businessType ?? "Hotel"],
+    }));
     const menuItems = parsed.menuItems?.length ? parsed.menuItems : DEFAULT.menuItems;
     return {
       ...DEFAULT,
@@ -229,6 +282,9 @@ function load(): State {
       hotels,
       menuItems,
       employees: parsed.employees ?? DEFAULT.employees,
+      finance: parsed.finance ?? [],
+      attendance: parsed.attendance ?? [],
+      salaries: parsed.salaries ?? [],
       audit: parsed.audit ?? [],
       held: parsed.held ?? [],
       printer: { ...DEFAULT.printer, ...(parsed.printer ?? {}) },
@@ -238,6 +294,7 @@ function load(): State {
     return DEFAULT;
   }
 }
+
 
 function persist() {
   if (typeof window === "undefined") return;
@@ -330,6 +387,55 @@ export const actions = {
     setState((s) => { s.menuItems = s.menuItems.filter((m) => m.id !== id); });
     audit({ actor: actorLabel(actor), action: "item.delete", target: id });
   },
+
+  // ---- Income & expense (every business) ----
+  addFinance(e: Omit<FinanceEntry, "id">, actor?: { id: string; name: string }): FinanceEntry {
+    const rec: FinanceEntry = { ...e, id: "F" + Date.now().toString().slice(-8) };
+    setState((s) => { s.finance.unshift(rec); });
+    audit({ actor: actorLabel(actor), action: "finance.add", target: rec.title, detail: `${rec.kind} ₹${rec.amount}` });
+    return rec;
+  },
+  deleteFinance(id: string, actor?: { id: string; name: string }) {
+    setState((s) => { s.finance = s.finance.filter((f) => f.id !== id); });
+    audit({ actor: actorLabel(actor), action: "finance.delete", target: id });
+  },
+
+  // ---- Attendance & salary ----
+  markAttendance(a: Omit<Attendance, "id">, actor?: { id: string; name: string }): Attendance {
+    const rec: Attendance = { ...a, id: "AT" + Date.now().toString().slice(-8) };
+    setState((s) => {
+      s.attendance = s.attendance.filter(
+        (x) => !(x.employeeId === a.employeeId && x.date === a.date),
+      );
+      s.attendance.unshift(rec);
+    });
+    audit({ actor: actorLabel(actor), action: "attendance.mark", target: a.employeeName, detail: `${a.date} · ${a.status}` });
+    return rec;
+  },
+  deleteAttendance(id: string) {
+    setState((s) => { s.attendance = s.attendance.filter((a) => a.id !== id); });
+  },
+  paySalary(p: Omit<SalaryPayment, "id">, actor?: { id: string; name: string }): SalaryPayment {
+    const rec: SalaryPayment = { ...p, id: "SL" + Date.now().toString().slice(-8) };
+    setState((s) => {
+      s.salaries.unshift(rec);
+      // Salary is a business expense too
+      s.finance.unshift({
+        id: "F" + Date.now().toString().slice(-8),
+        hotelId: p.hotelId, date: p.paidOn.slice(0, 10), kind: "expense",
+        title: `Salary · ${p.employeeName}`, category: "Salary",
+        amount: p.amount + p.bonus - p.deduction, payment: p.payment,
+        note: `Month ${p.month}`,
+      });
+    });
+    audit({ actor: actorLabel(actor), action: "salary.pay", target: p.employeeName, detail: `${p.month} · ₹${p.amount}` });
+    return rec;
+  },
+  deleteSalary(id: string) {
+    setState((s) => { s.salaries = s.salaries.filter((x) => x.id !== id); });
+  },
+
+
 
 
   addMedicine(m: Omit<Medicine, "id">, actor?: { id: string; name: string }) {

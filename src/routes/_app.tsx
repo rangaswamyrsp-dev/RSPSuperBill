@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/app/AppSidebar";
 import { AppHeader } from "@/components/app/AppHeader";
 import { ChatHelpFab } from "@/components/app/ChatHelpFab";
 import { getUser } from "@/lib/auth";
+import { useSidebarHidden } from "@/lib/account";
 
 export const Route = createFileRoute("/_app")({
   beforeLoad: () => {
@@ -14,9 +15,10 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+  const hidden = useSidebarHidden();
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      <AppSidebar />
+      {!hidden && <AppSidebar />}
       <div className="flex flex-1 flex-col min-w-0">
         <AppHeader />
         <main className="flex-1 overflow-auto">
@@ -27,3 +29,4 @@ function AppLayout() {
     </div>
   );
 }
+
