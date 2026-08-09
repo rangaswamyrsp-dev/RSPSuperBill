@@ -345,14 +345,16 @@ function SuperAdminPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Account created</DialogTitle>
-            <DialogDescription>Share these details with the hotel owner.</DialogDescription>
+            <DialogDescription>Share these details with the owner.</DialogDescription>
           </DialogHeader>
           {created && (
             <div className="rounded-lg border bg-muted/40 p-4 text-sm space-y-1">
               <div className="font-medium">{created.name}</div>
               <div>User ID: <span className="font-mono">{created.loginId}</span></div>
               <div>Password: <span className="font-mono">{created.password}</span></div>
-              <div className="text-xs text-muted-foreground">Plan: {created.plan}</div>
+              <div className="text-xs text-muted-foreground">
+                {created.businessType ?? "Hotel"} · Plan: {created.plan}
+              </div>
             </div>
           )}
           <DialogFooter>
@@ -361,6 +363,68 @@ function SuperAdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!featFor} onOpenChange={(v) => !v && setFeatFor(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Features — {featFor?.name}</DialogTitle>
+            <DialogDescription>Tick only the modules this customer needs. Unticked modules disappear from their menu.</DialogDescription>
+          </DialogHeader>
+          {featFor && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Business type</Label>
+                <Select
+                  value={featFor.businessType ?? "Hotel"}
+                  onValueChange={(v) => {
+                    setFeatFor({ ...featFor, businessType: v as BusinessType });
+                    setFeatSel(DEFAULT_FEATURES[v as BusinessType]);
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 rounded-md border p-3">
+                {FEATURE_LIST.map((f) => (
+                  <label key={f.key} className="flex items-start gap-2 text-sm">
+                    <Checkbox
+                      checked={featSel.includes(f.key)}
+                      onCheckedChange={() =>
+                        setFeatSel((s) => (s.includes(f.key) ? s.filter((x) => x !== f.key) : [...s, f.key]))
+                      }
+                    />
+                    <span>
+                      {f.label}
+                      <span className="block text-xs text-muted-foreground">{f.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeatFor(null)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!featFor) return;
+                actions.updateHotel(
+                  featFor.id,
+                  { businessType: featFor.businessType ?? "Hotel", features: featSel },
+                  me ? { id: me.id, name: me.name } : undefined,
+                );
+                toast.success("Features updated");
+                setFeatFor(null);
+              }}
+            >
+              Save features
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
