@@ -1,31 +1,30 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "@tanstack/react-router";
 import {
-  IndianRupee, Receipt, ShoppingCart, TrendingUp, Boxes, AlertTriangle, CalendarClock,
-  Users, Plus, Printer, DatabaseBackup, UserPlus, Pill, Truck,
+  IndianRupee, Receipt, TrendingUp, Boxes, AlertTriangle, CalendarClock,
+  Users, Plus, Printer, DatabaseBackup, UserPlus, Package, Truck, PiggyBank,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useStore, useHydrated } from "@/lib/store";
+import { getUser } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 
 export const Route = createFileRoute("/_app/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard · RSP Medical Billing" }] }),
+  head: () => ({
+    meta: [
+      { title: "Dashboard · RSP Billing Software" },
+      { name: "description", content: "Today's sales, bills, profit and stock summary for your business." },
+      { property: "og:title", content: "Dashboard · RSP Billing Software" },
+      { property: "og:description", content: "Daily business summary: sales, bills, income and expenses." },
+    ],
+  }),
   component: Dashboard,
 });
-
-const STATS = [
-  { label: "Today's Sales", value: "₹52,450", icon: IndianRupee, tone: "primary" as const, delta: "+12%" },
-  { label: "Today's Bills", value: "48", icon: Receipt, tone: "info" as const, delta: "+6" },
-  { label: "Purchase", value: "₹32,000", icon: ShoppingCart, tone: "info" as const },
-  { label: "Today's Profit", value: "₹20,450", icon: TrendingUp, tone: "primary" as const, delta: "+8%" },
-  { label: "Stock Items", value: "5,820", icon: Boxes, tone: "info" as const },
-  { label: "Low Stock", value: "12", icon: AlertTriangle, tone: "warning" as const },
-  { label: "Expiry Medicines", value: "18", icon: CalendarClock, tone: "warning" as const },
-  { label: "Today's Customers", value: "45", icon: Users, tone: "primary" as const },
-];
 
 const TONE: Record<string, string> = {
   primary: "bg-primary/10 text-primary",
@@ -33,51 +32,97 @@ const TONE: Record<string, string> = {
   warning: "bg-[color:var(--warning)]/15 text-[color:var(--warning)]",
 };
 
-const RECENT_BILLS = [
-  ["INV10254", "Ravi Kumar", "₹1,250", "UPI", "12:42 PM"],
-  ["INV10253", "Walk-in", "₹340", "Cash", "12:31 PM"],
-  ["INV10252", "Sujatha S.", "₹2,890", "PhonePe", "12:12 PM"],
-  ["INV10251", "K. Mohan", "₹560", "Cash", "11:55 AM"],
-  ["INV10250", "Priya R.", "₹1,120", "GPay", "11:20 AM"],
-];
-
-const LOW_STOCK = [
-  ["Amlodipine 5mg", "AM55", 8, "Torrent"],
-  ["Ranitidine 150mg", "RN15", 4, "GSK"],
-  ["Azithromycin 500mg", "AZ88", 12, "Sun"],
-];
+const money = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 
 function Dashboard() {
+  const hydrated = useHydrated();
+  const { account, labels, has, businessType } = useAccount();
+  const sales = useStore((s) => s.sales);
+  const menuItems = useStore((s) => s.menuItems);
+  const medicines = useStore((s) => s.medicines);
+  const finance = useStore((s) => s.finance);
+  const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => setMe(getUser()), []);
+
+  const hotelId = me?.hotelId ?? "";
+  const today = new Date().toISOString().slice(0, 10);
+
+  const mySales = useMemo(
+    () => sales.filter((s) => (!hotelId || s.hotelId === hotelId) && s.status !== "cancelled"),
+    [sales, hotelId],
+  );
+  const todaySales = mySales.filter((s) => (s.date ?? "").slice(0, 10) === today);
+  const revenue = todaySales.reduce((t, s) => t + s.grand, 0);
+  const myItems = menuItems.filter((m) => !hotelId || m.hotelId === hotelId);
+  const myFinance = finance.filter((f) => !hotelId || f.hotelId === hotelId);
+  const monthKey = today.slice(0, 7);
+  const income = myFinance.filter((f) => f.kind === "income" && f.date.startsWith(monthKey))
+    .reduce((t, f) => t + f.amount, 0);
+  const expense = myFinance.filter((f) => f.kind === "expense" && f.date.startsWith(monthKey))
+    .reduce((t, f) => t + f.amount, 0);
+  const customersToday = new Set(todaySales.map((s) => s.phone || s.id)).size;
+
+  // Batch / expiry style stock alerts only make sense for search-based businesses
+  const stockMode = labels.billingMode === "search" && has("inventory");
+  const lowStock = stockMode ? medicines.filter((m) => m.stock < 20).slice(0, 5) : [];
+  const expiring = has("expiry")
+    ? medicines.filter((m) => {
+        if (!m.expiry) return false;
+        const [y, mo] = m.expiry.split("-").map(Number);
+        if (!y) return false;
+        const days = (new Date(y, (mo || 1) - 1, 1).getTime() - Date.now()) / 86400000;
+        return days <= 90 && days >= -30;
+      }).length
+    : 0;
+
+  const stats: { label: string; value: string; icon: any; tone: keyof typeof TONE }[] = [
+    { label: "Today's Sales", value: money(revenue), icon: IndianRupee, tone: "primary" },
+    { label: "Today's Bills", value: String(todaySales.length), icon: Receipt, tone: "info" },
+    { label: `${labels.items} listed`, value: String(myItems.length), icon: Boxes, tone: "info" },
+    { label: "Today's Customers", value: String(customersToday), icon: Users, tone: "primary" },
+  ];
+  if (has("finance")) {
+    stats.push({ label: "Income (this month)", value: money(income), icon: TrendingUp, tone: "primary" });
+    stats.push({ label: "Expense (this month)", value: money(expense), icon: PiggyBank, tone: "warning" });
+  }
+  if (stockMode) {
+    stats.push({ label: "Low Stock", value: String(medicines.filter((m) => m.stock < 20).length), icon: AlertTriangle, tone: "warning" });
+  }
+  if (has("expiry")) {
+    stats.push({ label: "Expiring soon", value: String(expiring), icon: CalendarClock, tone: "warning" });
+  }
+
+  if (!hydrated) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Overview for ANAM Medical Store · KL Road branch · Today
+            {account?.name ?? me?.store ?? "Your business"}
+            {account?.city ? ` · ${account.city}` : ""} · {businessType} · Today
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild><Link to="/"><Plus className="h-4 w-4 mr-1.5" /> New Bill</Link></Button>
-          <Button asChild variant="outline"><Link to="/purchase"><Truck className="h-4 w-4 mr-1.5" /> Purchase</Link></Button>
-          <Button asChild variant="outline"><Link to="/medicines"><Pill className="h-4 w-4 mr-1.5" /> Add Medicine</Link></Button>
-          <Button asChild variant="outline"><Link to="/customers"><UserPlus className="h-4 w-4 mr-1.5" /> Customer</Link></Button>
-          <Button asChild variant="outline"><Link to="/reports"><Printer className="h-4 w-4 mr-1.5" /> Reports</Link></Button>
-          <Button asChild variant="outline"><Link to="/backup"><DatabaseBackup className="h-4 w-4 mr-1.5" /> Backup</Link></Button>
+          {has("billing") && <Button asChild><Link to="/"><Plus className="h-4 w-4 mr-1.5" /> New Bill</Link></Button>}
+          {has("purchase") && <Button asChild variant="outline"><Link to="/purchase"><Truck className="h-4 w-4 mr-1.5" /> Purchase</Link></Button>}
+          {has("items") && (
+            <Button asChild variant="outline">
+              <Link to="/items"><Package className="h-4 w-4 mr-1.5" /> {labels.items}</Link>
+            </Button>
+          )}
+          {has("customers") && <Button asChild variant="outline"><Link to="/customers"><UserPlus className="h-4 w-4 mr-1.5" /> Customer</Link></Button>}
+          {has("reports") && <Button asChild variant="outline"><Link to="/reports"><Printer className="h-4 w-4 mr-1.5" /> Reports</Link></Button>}
+          {has("backup") && <Button asChild variant="outline"><Link to="/backup"><DatabaseBackup className="h-4 w-4 mr-1.5" /> Backup</Link></Button>}
         </div>
       </div>
 
-      {/* Stat grid */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {STATS.map((s) => (
+        {stats.map((s) => (
           <Card key={s.label} className="p-4">
-            <div className="flex items-start justify-between">
-              <div className={`h-9 w-9 grid place-items-center rounded-lg ${TONE[s.tone]}`}>
-                <s.icon className="h-5 w-5" />
-              </div>
-              {s.delta && (
-                <Badge variant="secondary" className="text-[10px]">{s.delta}</Badge>
-              )}
+            <div className={`h-9 w-9 grid place-items-center rounded-lg ${TONE[s.tone]}`}>
+              <s.icon className="h-5 w-5" />
             </div>
             <div className="mt-3 text-2xl font-semibold tracking-tight tabular-nums">{s.value}</div>
             <div className="text-xs text-muted-foreground">{s.label}</div>
@@ -85,54 +130,61 @@ function Dashboard() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
-            <div className="font-semibold">Recent Bills</div>
-            <Button size="sm" variant="ghost">View all</Button>
-          </div>
+      {/* Recent bills — its own section */}
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-semibold">Recent Bills</div>
+          {has("sales") && <Button size="sm" variant="ghost" asChild><Link to="/sales">View all</Link></Button>}
+        </div>
+        {mySales.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            No bills yet. Open Billing to make your first bill.
+          </p>
+        ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Bill No</TableHead>
-                <TableHead>Customer</TableHead>
+                <TableHead>Table / Customer</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Payment</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {RECENT_BILLS.map((r) => (
-                <TableRow key={r[0]}>
-                  <TableCell className="font-medium">{r[0]}</TableCell>
-                  <TableCell>{r[1]}</TableCell>
-                  <TableCell className="tabular-nums">{r[2]}</TableCell>
-                  <TableCell><Badge variant="secondary">{r[3]}</Badge></TableCell>
-                  <TableCell className="text-muted-foreground">{r[4]}</TableCell>
+              {[...mySales].reverse().slice(0, 8).map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-medium">{s.id}</TableCell>
+                  <TableCell>{s.table ? `Table ${s.table}` : s.customerName || "—"}</TableCell>
+                  <TableCell className="tabular-nums">{money(s.grand)}</TableCell>
+                  <TableCell><Badge variant="secondary">{s.payment}</Badge></TableCell>
+                  <TableCell className="text-muted-foreground">{(s.date ?? "").slice(0, 16).replace("T", " ")}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </Card>
+        )}
+      </Card>
 
+      {stockMode && lowStock.length > 0 && (
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-[color:var(--warning)]" />
             <div className="font-semibold">Low Stock Alerts</div>
           </div>
-          <ul className="space-y-2 text-sm">
-            {LOW_STOCK.map((r) => (
-              <li key={r[1] as string} className="flex items-center justify-between rounded-md border p-2.5">
+          <ul className="space-y-2 text-sm sm:grid sm:grid-cols-2 sm:gap-2 sm:space-y-0">
+            {lowStock.map((m) => (
+              <li key={m.id} className="flex items-center justify-between rounded-md border p-2.5">
                 <div>
-                  <div className="font-medium">{r[0]}</div>
-                  <div className="text-xs text-muted-foreground">Batch {r[1]} · {r[3]}</div>
+                  <div className="font-medium">{m.name}</div>
+                  <div className="text-xs text-muted-foreground">Batch {m.batch}</div>
                 </div>
-                <span className="text-[color:var(--warning)] font-semibold">{r[2]} left</span>
+                <span className="text-[color:var(--warning)] font-semibold">{m.stock} left</span>
               </li>
             ))}
           </ul>
         </Card>
-      </div>
+      )}
     </div>
   );
 }
