@@ -62,18 +62,8 @@ function Dashboard() {
     .reduce((t, f) => t + f.amount, 0);
   const customersToday = new Set(todaySales.map((s) => s.phone || s.id)).size;
 
-  // Batch / expiry style stock alerts only make sense for search-based businesses
-  const stockMode = labels.billingMode === "search" && has("inventory");
-  const lowStock = stockMode ? medicines.filter((m) => m.stock < 20).slice(0, 5) : [];
-  const expiring = has("expiry")
-    ? medicines.filter((m) => {
-        if (!m.expiry) return false;
-        const [y, mo] = m.expiry.split("-").map(Number);
-        if (!y) return false;
-        const days = (new Date(y, (mo || 1) - 1, 1).getTime() - Date.now()) / 86400000;
-        return days <= 90 && days >= -30;
-      }).length
-    : 0;
+  const stockMode = false;
+  const lowStock: never[] = [];
 
   const stats: { label: string; value: string; icon: any; tone: keyof typeof TONE }[] = [
     { label: "Today's Sales", value: money(revenue), icon: IndianRupee, tone: "primary" },
@@ -84,12 +74,6 @@ function Dashboard() {
   if (has("finance")) {
     stats.push({ label: "Income (this month)", value: money(income), icon: TrendingUp, tone: "primary" });
     stats.push({ label: "Expense (this month)", value: money(expense), icon: PiggyBank, tone: "warning" });
-  }
-  if (stockMode) {
-    stats.push({ label: "Low Stock", value: String(medicines.filter((m) => m.stock < 20).length), icon: AlertTriangle, tone: "warning" });
-  }
-  if (has("expiry")) {
-    stats.push({ label: "Expiring soon", value: String(expiring), icon: CalendarClock, tone: "warning" });
   }
 
   if (!hydrated) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
