@@ -7,7 +7,7 @@ import { actions } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/backup")({
-  head: () => ({ meta: [{ title: "Backup · RSP Medical Billing" }] }),
+  head: () => ({ meta: [{ title: "Backup · RSP Billing Software" }] }),
   component: BackupPage,
 });
 
@@ -42,7 +42,7 @@ function BackupPage() {
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <DatabaseBackup className="h-6 w-6 text-primary" /> Backup & Restore
         </h1>
-        <p className="text-sm text-muted-foreground">Save all data (medicines, customers, bills, settings) to a JSON file.</p>
+        <p className="text-sm text-muted-foreground">Save all data (menu items, customers, bills, settings) to a JSON file.</p>
       </div>
 
       <Card className="p-5 space-y-3">

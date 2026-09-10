@@ -78,16 +78,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RSP Medical Billing · ANAM Medical Store" },
+      { title: "RSP Billing Software · Hotels & Restaurants" },
       {
         name: "description",
         content:
-          "Fast, keyboard-driven medical billing, inventory, GST and reports desktop software for ANAM Medical Store.",
+          "Fast billing, menu, kitchen stock, staff attendance, income, expense and reports software for hotels, restaurants and cafes.",
       },
-      { property: "og:title", content: "RSP Medical Billing" },
+      { property: "og:title", content: "RSP Billing Software" },
       {
         property: "og:description",
-        content: "Billing, inventory, GST and reports for medical stores.",
+        content: "Billing, menu, reports and accounts for hotels and restaurants.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

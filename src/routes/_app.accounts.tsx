@@ -8,7 +8,7 @@ import { Wallet } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/_app/accounts")({
-  head: () => ({ meta: [{ title: "Accounts · RSP Medical Billing" }] }),
+  head: () => ({ meta: [{ title: "Accounts · RSP Billing Software" }] }),
   component: AccountsPage,
 });
 

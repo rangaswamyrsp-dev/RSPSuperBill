@@ -12,7 +12,7 @@ import { printReceipt } from "@/lib/print";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/settings")({
-  head: () => ({ meta: [{ title: "Settings · RSP Medical Billing" }] }),
+  head: () => ({ meta: [{ title: "Settings · RSP Billing Software" }] }),
   component: SettingsPage,
 });
 
@@ -76,7 +76,6 @@ function SettingsPage() {
           </div>
           <div className="space-y-1.5"><Label className="text-xs">Phone</Label><Input value={p.storePhone} onChange={(e) => update({ storePhone: e.target.value })} /></div>
           <div className="space-y-1.5"><Label className="text-xs">GSTIN</Label><Input value={p.gstin} onChange={(e) => update({ gstin: e.target.value })} /></div>
-          <div className="space-y-1.5 col-span-2"><Label className="text-xs">Drug License</Label><Input value={p.drugLicense} onChange={(e) => update({ drugLicense: e.target.value })} /></div>
           <div className="space-y-1.5 col-span-2">
             <Label className="text-xs">Footer message</Label>
             <Textarea rows={2} value={p.footer} onChange={(e) => update({ footer: e.target.value })} />

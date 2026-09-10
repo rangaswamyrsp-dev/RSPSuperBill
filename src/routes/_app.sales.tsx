@@ -14,7 +14,7 @@ import { getUser, CAN } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/sales")({
-  head: () => ({ meta: [{ title: "Sales · RSP Medical Billing" }] }),
+  head: () => ({ meta: [{ title: "Sales · RSP Billing Software" }] }),
   component: SalesPage,
 });
 

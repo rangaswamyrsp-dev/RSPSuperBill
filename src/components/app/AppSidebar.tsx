@@ -36,7 +36,6 @@ const ALL_NAV: Item[] = [
   { to: "/gst", label: "GST", icon: Percent, cap: "gst", feat: "gst" },
   { to: "/accounts", label: "Accounts", icon: Wallet, cap: "accounts", feat: "accounts" },
   { to: "/audit", label: "Audit Log", icon: ShieldCheck, cap: "audit", feat: "audit" },
-  { to: "/barcode", label: "Barcode", icon: ScanBarcode, cap: "barcode", feat: "barcode" },
   { to: "/help", label: "Help & Guide", icon: HelpCircle, cap: "dashboard", feat: "help" },
   { to: "/settings", label: "Settings", icon: Settings, cap: "settings", feat: "settings" },
   { to: "/backup", label: "Backup", icon: DatabaseBackup, cap: "backup", feat: "backup" },

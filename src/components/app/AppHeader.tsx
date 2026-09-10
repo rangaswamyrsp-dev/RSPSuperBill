@@ -30,27 +30,13 @@ export function AppHeader() {
   const sidebarHidden = useSidebarHidden();
 
 
-  const medicines = useStore((s) => s.medicines);
   const held = useStore((s) => s.held);
 
   const notifications = useMemo(() => {
     const list: { type: "low" | "expiry" | "held"; title: string; sub: string }[] = [];
-    medicines
-      .filter((m) => m.stock < 20)
-      .slice(0, 8)
-      .forEach((m) => list.push({ type: "low", title: `Low stock · ${m.name}`, sub: `Only ${m.stock} left · Batch ${m.batch}` }));
-    const now = new Date();
-    medicines.forEach((m) => {
-      if (!m.expiry) return;
-      const [y, mo] = m.expiry.split("-").map(Number);
-      if (!y) return;
-      const exp = new Date(y, (mo || 1) - 1, 1);
-      const days = Math.floor((exp.getTime() - now.getTime()) / 86400000);
-      if (days <= 90 && days >= -30) list.push({ type: "expiry", title: `Expiring · ${m.name}`, sub: `Exp ${m.expiry} · Batch ${m.batch}` });
-    });
     held.forEach((h) => list.push({ type: "held", title: `Held bill ${h.id}`, sub: `${h.customerName || "Walk-in"} · ${h.items.length} items` }));
     return list.slice(0, 12);
-  }, [medicines, held]);
+  }, [held]);
 
   useEffect(() => {
     const u = getUser();

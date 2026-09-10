@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { actions, useStore, useHydrated, type Hotel } from "@/lib/store";
 import { getUser, generatePassword } from "@/lib/auth";
 import {
-  BUSINESS_TYPES, DEFAULT_FEATURES, FEATURE_LIST, labelsFor,
+  BUSINESS_TYPES, DEFAULT_FEATURES, FEATURE_LIST, normalizeBusinessType,
   type BusinessType, type FeatureKey,
 } from "@/lib/business";
 
@@ -139,20 +139,19 @@ function SuperAdminPage() {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Card className="p-4">
-          <div className="text-xs text-muted-foreground">Total hotels</div>
+          <div className="text-xs text-muted-foreground">Total accounts</div>
           <div className="text-2xl font-semibold">{hotels.length}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Active subscriptions</div>
           <div className="text-2xl font-semibold">{active}</div>
         </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground">Bills across all hotels</div>
-          <div className="text-2xl font-semibold">{sales.length}</div>
-        </Card>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Customer bills, menus and reports are private to each hotel and are never shown here.
+      </p>
 
       <Card className="p-3">
         <div className="relative max-w-sm">
@@ -189,10 +188,9 @@ function SuperAdminPage() {
                 <TableCell className="font-mono text-xs">{h.loginId}</TableCell>
                 <TableCell className="font-mono text-xs">{h.password}</TableCell>
                 <TableCell>
-                  <div>{h.businessType ?? "Hotel"}</div>
+                  <div>{normalizeBusinessType(h.businessType)}</div>
                   <div className="text-xs text-muted-foreground">
-                    {(h.features?.length ?? DEFAULT_FEATURES[h.businessType ?? "Hotel"].length)} modules ·{" "}
-                    {labelsFor(h.businessType).billingMode === "photo" ? "photo billing" : "search billing"}
+                    {(h.features?.length ?? DEFAULT_FEATURES[normalizeBusinessType(h.businessType)].length)} modules
                   </div>
                 </TableCell>
                 <TableCell>{h.plan}</TableCell>
@@ -272,9 +270,7 @@ function SuperAdminPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {labelsFor(form.businessType).billingMode === "photo"
-                  ? "Billing shows item photos — good for hotels and bakeries."
-                  : "Billing uses a search bar / barcode scan — good for medical and supermarket."}
+                Billing shows dish photos in a 10-item grid — fast for hotels, restaurants and cafes.
               </p>
             </div>
             <div className="sm:col-span-2 space-y-2 rounded-md border p-3">

@@ -4,7 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { HelpCircle, Keyboard, Receipt, Printer, ScanBarcode, Users, Package, Shield, BarChart3 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/help")({
-  head: () => ({ meta: [{ title: "Help & Guide · RSP Medical Billing" }] }),
+  head: () => ({ meta: [{ title: "Help & Guide · RSP Billing Software" }] }),
   component: HelpPage,
 });
 
