@@ -78,13 +78,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RSP Medical Billing · ANAM Medical Store" },
+      { title: "RSP Billing Software · ANAM Medical Store" },
       {
         name: "description",
         content:
           "Fast, keyboard-driven medical billing, inventory, GST and reports desktop software for ANAM Medical Store.",
       },
-      { property: "og:title", content: "RSP Medical Billing" },
+      { property: "og:title", content: "RSP Billing Software" },
       {
         property: "og:description",
         content: "Billing, inventory, GST and reports for medical stores.",

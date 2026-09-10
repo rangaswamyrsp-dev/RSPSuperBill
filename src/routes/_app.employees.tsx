@@ -20,7 +20,7 @@ import { generatePassword, getUser } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/employees")({
-  head: () => ({ meta: [{ title: "Employees · RSP Medical Billing" }] }),
+  head: () => ({ meta: [{ title: "Employees · RSP Billing Software" }] }),
   component: EmployeesPage,
 });
 
@@ -209,7 +209,6 @@ function EmployeesPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Manager">Manager</SelectItem>
-                  <SelectItem value="Pharmacist">Pharmacist</SelectItem>
                   <SelectItem value="Cashier">Cashier</SelectItem>
                 </SelectContent>
               </Select>

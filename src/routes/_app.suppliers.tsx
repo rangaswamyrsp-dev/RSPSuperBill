@@ -15,7 +15,7 @@ import { actions, useStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/suppliers")({
-  head: () => ({ meta: [{ title: "Suppliers · RSP Medical Billing" }] }),
+  head: () => ({ meta: [{ title: "Suppliers · RSP Billing Software" }] }),
   component: SuppliersPage,
 });
 

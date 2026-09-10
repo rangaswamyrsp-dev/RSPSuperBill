@@ -18,7 +18,6 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
-import { Route as AppMedicinesRouteImport } from './routes/_app.medicines'
 import { Route as AppItemsRouteImport } from './routes/_app.items'
 import { Route as AppInventoryRouteImport } from './routes/_app.inventory'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
@@ -27,7 +26,6 @@ import { Route as AppFinanceRouteImport } from './routes/_app.finance'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCustomersRouteImport } from './routes/_app.customers'
-import { Route as AppBarcodeRouteImport } from './routes/_app.barcode'
 import { Route as AppBackupRouteImport } from './routes/_app.backup'
 import { Route as AppAuditRouteImport } from './routes/_app.audit'
 import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
@@ -77,11 +75,6 @@ const AppPurchaseRoute = AppPurchaseRouteImport.update({
   path: '/purchase',
   getParentRoute: () => AppRoute,
 } as any)
-const AppMedicinesRoute = AppMedicinesRouteImport.update({
-  id: '/medicines',
-  path: '/medicines',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppItemsRoute = AppItemsRouteImport.update({
   id: '/items',
   path: '/items',
@@ -122,11 +115,6 @@ const AppCustomersRoute = AppCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AppRoute,
 } as any)
-const AppBarcodeRoute = AppBarcodeRouteImport.update({
-  id: '/barcode',
-  path: '/barcode',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppBackupRoute = AppBackupRouteImport.update({
   id: '/backup',
   path: '/backup',
@@ -155,7 +143,6 @@ export interface FileRoutesByFullPath {
   '/attendance': typeof AppAttendanceRoute
   '/audit': typeof AppAuditRoute
   '/backup': typeof AppBackupRoute
-  '/barcode': typeof AppBarcodeRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/employees': typeof AppEmployeesRoute
@@ -164,7 +151,6 @@ export interface FileRoutesByFullPath {
   '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
   '/items': typeof AppItemsRoute
-  '/medicines': typeof AppMedicinesRoute
   '/purchase': typeof AppPurchaseRoute
   '/reports': typeof AppReportsRoute
   '/sales': typeof AppSalesRoute
@@ -178,7 +164,6 @@ export interface FileRoutesByTo {
   '/attendance': typeof AppAttendanceRoute
   '/audit': typeof AppAuditRoute
   '/backup': typeof AppBackupRoute
-  '/barcode': typeof AppBarcodeRoute
   '/customers': typeof AppCustomersRoute
   '/dashboard': typeof AppDashboardRoute
   '/employees': typeof AppEmployeesRoute
@@ -187,7 +172,6 @@ export interface FileRoutesByTo {
   '/help': typeof AppHelpRoute
   '/inventory': typeof AppInventoryRoute
   '/items': typeof AppItemsRoute
-  '/medicines': typeof AppMedicinesRoute
   '/purchase': typeof AppPurchaseRoute
   '/reports': typeof AppReportsRoute
   '/sales': typeof AppSalesRoute
@@ -204,7 +188,6 @@ export interface FileRoutesById {
   '/_app/attendance': typeof AppAttendanceRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/backup': typeof AppBackupRoute
-  '/_app/barcode': typeof AppBarcodeRoute
   '/_app/customers': typeof AppCustomersRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/employees': typeof AppEmployeesRoute
@@ -213,7 +196,6 @@ export interface FileRoutesById {
   '/_app/help': typeof AppHelpRoute
   '/_app/inventory': typeof AppInventoryRoute
   '/_app/items': typeof AppItemsRoute
-  '/_app/medicines': typeof AppMedicinesRoute
   '/_app/purchase': typeof AppPurchaseRoute
   '/_app/reports': typeof AppReportsRoute
   '/_app/sales': typeof AppSalesRoute
@@ -231,7 +213,6 @@ export interface FileRouteTypes {
     | '/attendance'
     | '/audit'
     | '/backup'
-    | '/barcode'
     | '/customers'
     | '/dashboard'
     | '/employees'
@@ -240,7 +221,6 @@ export interface FileRouteTypes {
     | '/help'
     | '/inventory'
     | '/items'
-    | '/medicines'
     | '/purchase'
     | '/reports'
     | '/sales'
@@ -254,7 +234,6 @@ export interface FileRouteTypes {
     | '/attendance'
     | '/audit'
     | '/backup'
-    | '/barcode'
     | '/customers'
     | '/dashboard'
     | '/employees'
@@ -263,7 +242,6 @@ export interface FileRouteTypes {
     | '/help'
     | '/inventory'
     | '/items'
-    | '/medicines'
     | '/purchase'
     | '/reports'
     | '/sales'
@@ -279,7 +257,6 @@ export interface FileRouteTypes {
     | '/_app/attendance'
     | '/_app/audit'
     | '/_app/backup'
-    | '/_app/barcode'
     | '/_app/customers'
     | '/_app/dashboard'
     | '/_app/employees'
@@ -288,7 +265,6 @@ export interface FileRouteTypes {
     | '/_app/help'
     | '/_app/inventory'
     | '/_app/items'
-    | '/_app/medicines'
     | '/_app/purchase'
     | '/_app/reports'
     | '/_app/sales'
@@ -368,13 +344,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPurchaseRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/medicines': {
-      id: '/_app/medicines'
-      path: '/medicines'
-      fullPath: '/medicines'
-      preLoaderRoute: typeof AppMedicinesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/items': {
       id: '/_app/items'
       path: '/items'
@@ -431,13 +400,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCustomersRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/barcode': {
-      id: '/_app/barcode'
-      path: '/barcode'
-      fullPath: '/barcode'
-      preLoaderRoute: typeof AppBarcodeRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/backup': {
       id: '/_app/backup'
       path: '/backup'
@@ -474,7 +436,6 @@ interface AppRouteChildren {
   AppAttendanceRoute: typeof AppAttendanceRoute
   AppAuditRoute: typeof AppAuditRoute
   AppBackupRoute: typeof AppBackupRoute
-  AppBarcodeRoute: typeof AppBarcodeRoute
   AppCustomersRoute: typeof AppCustomersRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
@@ -483,7 +444,6 @@ interface AppRouteChildren {
   AppHelpRoute: typeof AppHelpRoute
   AppInventoryRoute: typeof AppInventoryRoute
   AppItemsRoute: typeof AppItemsRoute
-  AppMedicinesRoute: typeof AppMedicinesRoute
   AppPurchaseRoute: typeof AppPurchaseRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSalesRoute: typeof AppSalesRoute
@@ -498,7 +458,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppAttendanceRoute: AppAttendanceRoute,
   AppAuditRoute: AppAuditRoute,
   AppBackupRoute: AppBackupRoute,
-  AppBarcodeRoute: AppBarcodeRoute,
   AppCustomersRoute: AppCustomersRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppEmployeesRoute: AppEmployeesRoute,
@@ -507,7 +466,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppHelpRoute: AppHelpRoute,
   AppInventoryRoute: AppInventoryRoute,
   AppItemsRoute: AppItemsRoute,
-  AppMedicinesRoute: AppMedicinesRoute,
   AppPurchaseRoute: AppPurchaseRoute,
   AppReportsRoute: AppReportsRoute,
   AppSalesRoute: AppSalesRoute,
