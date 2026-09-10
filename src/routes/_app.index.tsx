@@ -36,7 +36,7 @@ function BillingPage() {
   const menuItems = useStore((s) => s.menuItems);
   const printer = useStore((s) => s.printer);
   const { labels } = useAccount();
-  const photoMode = labels.billingMode === "photo";
+  const photoMode = true;
   const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
   useEffect(() => setMe(getUser()), []);
 
