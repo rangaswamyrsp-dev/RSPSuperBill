@@ -150,25 +150,6 @@ function Dashboard() {
         )}
       </Card>
 
-      {stockMode && lowStock.length > 0 && (
-        <Card className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-4 w-4 text-[color:var(--warning)]" />
-            <div className="font-semibold">Low Stock Alerts</div>
-          </div>
-          <ul className="space-y-2 text-sm sm:grid sm:grid-cols-2 sm:gap-2 sm:space-y-0">
-            {lowStock.map((m) => (
-              <li key={m.id} className="flex items-center justify-between rounded-md border p-2.5">
-                <div>
-                  <div className="font-medium">{m.name}</div>
-                  <div className="text-xs text-muted-foreground">Batch {m.batch}</div>
-                </div>
-                <span className="text-[color:var(--warning)] font-semibold">{m.stock} left</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
     </div>
   );
 }
