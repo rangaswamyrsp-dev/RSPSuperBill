@@ -102,7 +102,7 @@ export function AppSidebar() {
 }
 
 export function SidebarBrand() {
-  const [store, setStore] = useState("RSP Billing");
+  const [store, setStore] = useState("RSP SuperBill");
   useEffect(() => { const u = getUser(); if (u) setStore(u.store); }, []);
   return (
     <div className="flex items-center gap-2 px-5 h-16 border-b border-sidebar-border">
@@ -110,7 +110,7 @@ export function SidebarBrand() {
         <ChefHat className="h-5 w-5" />
       </div>
       <div className="leading-tight">
-        <div className="text-sm font-semibold">RSP Billing</div>
+        <div className="text-sm font-semibold">RSP SuperBill</div>
         <div className="text-[11px] text-muted-foreground truncate max-w-[140px]">{store}</div>
       </div>
     </div>

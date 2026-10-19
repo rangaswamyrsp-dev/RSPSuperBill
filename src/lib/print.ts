@@ -79,7 +79,7 @@ export function receiptHTML(sale: Sale, p: PrinterSettings): string {
     </div>
     <hr/>
     <div class="footer">${escape(p.footer)}</div>
-    <div class="footer muted">${sale.items.length} item(s) · Powered by RSP Billing</div>
+    <div class="footer muted">${sale.items.length} item(s) · Powered by RSP SuperBill</div>
     <button class="noprint" onclick="window.print()" style="margin-top:10px;padding:6px 10px">Print</button>
   </div>
 </body></html>`;

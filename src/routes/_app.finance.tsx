@@ -18,9 +18,9 @@ import { useAccount } from "@/lib/account";
 export const Route = createFileRoute("/_app/finance")({
   head: () => ({
     meta: [
-      { title: "Income & Expense · RSP Billing" },
+      { title: "Income & Expense · RSP SuperBill" },
       { name: "description", content: "Track every income and expense of your business with monthly and yearly totals, net profit and printable reports." },
-      { property: "og:title", content: "Income & Expense · RSP Billing" },
+      { property: "og:title", content: "Income & Expense · RSP SuperBill" },
       { property: "og:description", content: "Business income, expenses, net profit and printable monthly or yearly reports." },
     ],
   }),

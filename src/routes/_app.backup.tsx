@@ -7,7 +7,7 @@ import { actions } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/backup")({
-  head: () => ({ meta: [{ title: "Backup · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Backup · RSP SuperBill" }] }),
   component: BackupPage,
 });
 

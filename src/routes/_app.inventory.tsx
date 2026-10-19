@@ -11,7 +11,7 @@ import { PackageSearch, Search, AlertTriangle, CalendarClock, Boxes } from "luci
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/_app/inventory")({
-  head: () => ({ meta: [{ title: "Inventory · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Inventory · RSP SuperBill" }] }),
   component: InventoryPage,
 });
 

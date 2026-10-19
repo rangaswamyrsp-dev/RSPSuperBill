@@ -8,7 +8,7 @@ import { Percent } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/_app/gst")({
-  head: () => ({ meta: [{ title: "GST · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "GST · RSP SuperBill" }] }),
   component: GstPage,
 });
 

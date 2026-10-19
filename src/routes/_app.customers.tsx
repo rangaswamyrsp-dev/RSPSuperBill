@@ -16,7 +16,7 @@ import { BulkImportDialog } from "@/components/app/BulkImportDialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/customers")({
-  head: () => ({ meta: [{ title: "Customers · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Customers · RSP SuperBill" }] }),
   component: CustomersPage,
 });
 

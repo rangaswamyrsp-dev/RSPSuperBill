@@ -1,4 +1,4 @@
-// SaaS auth for RSP Hotel Billing.
+// SaaS auth for RSP SuperBill.
 // 1) Super Admin (us) — creates hotel accounts and hands out User ID + Password.
 // 2) Hotel Admin — the hotel owner, logs in with the User ID we created.
 // 3) Hotel staff (Manager / Cashier / Waiter) — created by the hotel admin in Employees.

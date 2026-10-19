@@ -23,9 +23,9 @@ import {
 export const Route = createFileRoute("/_app/superadmin")({
   head: () => ({
     meta: [
-      { title: "Business Accounts · RSP Billing SaaS" },
+      { title: "Business Accounts · RSP SuperBill" },
       { name: "description", content: "Super admin console to create hotel, medical, supermarket and retail accounts, pick their features, and issue user IDs and passwords." },
-      { property: "og:title", content: "Business Accounts · RSP Billing SaaS" },
+      { property: "og:title", content: "Business Accounts · RSP SuperBill" },
       { property: "og:description", content: "Create customer accounts, choose their business type and features, and issue login credentials." },
     ],
   }),

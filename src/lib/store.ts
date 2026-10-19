@@ -166,7 +166,7 @@ export type HeldBill = {
 
 const DEFAULT_PRINTER: PrinterSettings = {
   paperSize: "80mm",
-  storeName: "ANAM Medical Store",
+  storeName: "your business",
   storeAddress: "KL Road, Hindupur - 515201",
   storePhone: "+91 98765 43210",
   gstin: "37ABCDE1234F1Z5",

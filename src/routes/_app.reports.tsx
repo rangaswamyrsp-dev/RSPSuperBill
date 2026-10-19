@@ -18,7 +18,7 @@ import {
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/_app/reports")({
-  head: () => ({ meta: [{ title: "Reports · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Reports · RSP SuperBill" }] }),
   component: ReportsPage,
 });
 

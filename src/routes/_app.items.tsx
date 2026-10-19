@@ -19,9 +19,9 @@ import { getUser } from "@/lib/auth";
 export const Route = createFileRoute("/_app/items")({
   head: () => ({
     meta: [
-      { title: "Menu Items · RSP Hotel Billing" },
+      { title: "Menu Items · RSP SuperBill" },
       { name: "description", content: "Add hotel menu items with photos and prices, and update your own rates any time." },
-      { property: "og:title", content: "Menu Items · RSP Hotel Billing" },
+      { property: "og:title", content: "Menu Items · RSP SuperBill" },
       { property: "og:description", content: "Manage your hotel menu with photos and prices." },
     ],
   }),

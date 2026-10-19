@@ -18,9 +18,9 @@ import { printReceipt } from "@/lib/print";
 export const Route = createFileRoute("/_app/")({
   head: () => ({
     meta: [
-      { title: "Billing · RSP Billing Software" },
+      { title: "Billing · RSP SuperBill" },
       { name: "description", content: "Tap an item to bill it. Instant totals, cash or UPI payment, and fast thermal receipt printing." },
-      { property: "og:title", content: "Billing · RSP Billing Software" },
+      { property: "og:title", content: "Billing · RSP SuperBill" },
       { property: "og:description", content: "Fast billing with instant totals and one-tap receipt printing." },
     ],
   }),

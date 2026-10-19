@@ -78,13 +78,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RSP Billing Software · Hotels, Supermarkets & Shops" },
+      { title: "RSP SuperBill · Hotels, Supermarkets & Shops" },
       {
         name: "description",
         content:
           "Fast billing, menu, kitchen stock, staff attendance, income, expense and reports software for hotels, restaurants and cafes.",
       },
-      { property: "og:title", content: "RSP Billing Software" },
+      { property: "og:title", content: "RSP SuperBill" },
       {
         property: "og:description",
         content: "Billing, menu, reports and accounts for hotels and restaurants.",
