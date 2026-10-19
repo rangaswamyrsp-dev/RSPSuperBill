@@ -86,6 +86,7 @@ function BillingPage() {
       }
       return [...prev, { item, qty: 1 }];
     });
+    if (!photoMode) setTimeout(() => scanRef.current?.focus(), 0);
   };
   const setQty = (id: string, delta: number) =>
     setLines((prev) =>
@@ -154,7 +155,6 @@ function BillingPage() {
           <div className="flex items-center gap-2">
             <div className="relative">
               {photoMode ? <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /> : <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />}
-              <span className="hidden" -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={scanRef}
                 autoFocus={!photoMode}
@@ -275,18 +275,29 @@ function BillingPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{l.item.name}</div>
-                  <div className="text-xs text-muted-foreground">₹{l.item.price} × {l.qty}</div>
+                  <div className="text-xs text-muted-foreground">₹{l.item.price}/{l.item.unit || "pcs"} × {l.qty} {LOOSE_UNITS.includes(l.item.unit ?? "") ? l.item.unit : ""}</div>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.item.id, -1)}>
                     <Minus className="h-3.5 w-3.5" />
                   </Button>
-                  <span className="w-6 text-center text-sm">{l.qty}</span>
+                  <input
+                    aria-label={`Quantity of ${l.item.name}`}
+                    inputMode="decimal"
+                    className="w-12 rounded border bg-background text-center text-sm h-7"
+                    value={l.qty}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (!Number.isFinite(v) || v < 0) return;
+                      setLines((prev) => prev.map((x) => (x.item.id === l.item.id ? { ...x, qty: v } : x)));
+                    }}
+                    onBlur={() => setLines((prev) => prev.filter((x) => x.qty > 0))}
+                  />
                   <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.item.id, 1)}>
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="w-16 text-right text-sm font-semibold">₹{l.item.price * l.qty}</div>
+                <div className="w-16 text-right text-sm font-semibold">₹{Math.round(l.item.price * l.qty * 100) / 100}</div>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(l.item.id)}>
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
