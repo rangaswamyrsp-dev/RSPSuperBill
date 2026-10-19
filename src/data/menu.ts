@@ -6,6 +6,9 @@ export type MenuItem = {
   price: number;
   photo?: string; // data URL or https URL
   active?: boolean;
+  unit?: string;     // pcs, kg, g, ml, l, pack ...
+  barcode?: string;  // for USB scanner billing
+  size?: string;     // e.g. "500 g", "1 L"
 };
 
 export const MENU_CATEGORIES = [
