@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LOOSE_UNITS } from "@/lib/business";
 import {
-  UtensilsCrossed, Search, Plus, Minus, Trash2, Printer, ChevronLeft, ChevronRight, Receipt,
+  UtensilsCrossed, Search, ScanBarcode, Plus, Minus, Trash2, Printer, ChevronLeft, ChevronRight, Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,8 @@ function BillingPage() {
   const menuItems = useStore((s) => s.menuItems);
   const printer = useStore((s) => s.printer);
   const { labels } = useAccount();
-  const photoMode = true;
+  const photoMode = labels.billingMode === "photo";
+  const scanRef = useRef<HTMLInputElement>(null);
   const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
   useEffect(() => setMe(getUser()), []);
 
@@ -64,7 +66,7 @@ function BillingPage() {
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
     return available.filter(
-      (m) => (cat === "All" || m.category === cat) && (!t || m.name.toLowerCase().includes(t)),
+      (m) => (cat === "All" || m.category === cat) && (!t || m.name.toLowerCase().includes(t) || (m.barcode ?? "") === q.trim()),
     );
   }, [available, cat, q]);
 
@@ -151,15 +153,22 @@ function BillingPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {photoMode ? <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /> : <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />}
+              <span className="hidden" -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={scanRef}
                 autoFocus={!photoMode}
-                className="pl-9 w-44"
-                placeholder="Search item"
+                className={photoMode ? "pl-9 w-44" : "pl-9 w-64 h-11 text-base"}
+                placeholder={photoMode ? "Search item" : "Scan barcode or type name"}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && filtered[0]) { add(filtered[0]); setQ(""); }
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  const code = q.trim();
+                  const hit = available.find((m) => m.barcode && m.barcode === code) ?? filtered[0];
+                  if (hit) { add(hit); setQ(""); }
+                  else if (code) { toast.error(`No item for "${code}"`); setQ(""); }
                 }}
               />
             </div>
@@ -191,7 +200,7 @@ function BillingPage() {
                 <div className="p-2.5">
                   <div className="text-sm font-medium truncate" title={m.name}>{m.name}</div>
                   <div className="mt-0.5 flex items-center justify-between">
-                    <span className="text-sm font-semibold">₹{m.price}</span>
+                    <span className="text-sm font-semibold">₹{m.price}<span className="text-xs font-normal text-muted-foreground">/{m.size || m.unit || "pcs"}</span></span>
                     <Badge variant="secondary" className="text-[10px]">{m.category}</Badge>
                   </div>
                 </div>
