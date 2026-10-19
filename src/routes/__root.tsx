@@ -78,7 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RSP Billing Software · Hotels & Restaurants" },
+      { title: "RSP Billing Software · Hotels, Supermarkets & Shops" },
       {
         name: "description",
         content:
