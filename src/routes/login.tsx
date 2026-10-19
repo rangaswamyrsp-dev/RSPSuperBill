@@ -16,8 +16,8 @@ export const Route = createFileRoute("/login")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in · RSP Billing Software" },
-      { name: "description", content: "Role-based login for ANAM Medical Store staff." },
+      { title: "Sign in · RSP SuperBill" },
+      { name: "description", content: "Role-based login for your business staff." },
     ],
   }),
   component: LoginPage,
@@ -54,8 +54,8 @@ function LoginPage() {
             <Stethoscope className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-lg font-semibold">RSP Billing Software</div>
-            <div className="text-xs text-white/70">ANAM Medical Store · Hindupur</div>
+            <div className="text-lg font-semibold">RSP SuperBill</div>
+            <div className="text-xs text-white/70">your business · Hindupur</div>
           </div>
         </div>
 
@@ -93,7 +93,7 @@ function LoginPage() {
             <div className="h-10 w-10 rounded-lg bg-primary text-primary-foreground grid place-items-center">
               <Stethoscope className="h-5 w-5" />
             </div>
-            <div className="font-semibold">RSP Billing Software</div>
+            <div className="font-semibold">RSP SuperBill</div>
           </div>
 
           <h2 className="text-2xl font-semibold tracking-tight">Sign in to continue</h2>

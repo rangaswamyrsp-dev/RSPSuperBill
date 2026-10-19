@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MEDICINES as SEED_MEDICINES, type Medicine } from "@/data/medicines";
 import { SEED_MENU, type MenuItem } from "@/data/menu";
-import { DEFAULT_FEATURES, type BusinessType, type FeatureKey } from "@/lib/business";
+import { DEFAULT_FEATURES, normalizeBusinessType, type BusinessType, type FeatureKey } from "@/lib/business";
 
 export type { Medicine, MenuItem };
 
@@ -166,7 +166,7 @@ export type HeldBill = {
 
 const DEFAULT_PRINTER: PrinterSettings = {
   paperSize: "80mm",
-  storeName: "ANAM Medical Store",
+  storeName: "your business",
   storeAddress: "KL Road, Hindupur - 515201",
   storePhone: "+91 98765 43210",
   gstin: "37ABCDE1234F1Z5",
@@ -272,8 +272,8 @@ function load(): State {
     // account has a business type + feature list.
     const hotels = (parsed.hotels?.length ? parsed.hotels : DEFAULT.hotels).map((h) => ({
       ...h,
-      businessType: h.businessType ?? "Hotel",
-      features: h.features?.length ? h.features : DEFAULT_FEATURES[h.businessType ?? "Hotel"],
+      businessType: normalizeBusinessType(h.businessType),
+      features: Array.isArray(h.features) ? h.features : DEFAULT_FEATURES[normalizeBusinessType(h.businessType)],
     }));
     const menuItems = parsed.menuItems?.length ? parsed.menuItems : DEFAULT.menuItems;
     return {

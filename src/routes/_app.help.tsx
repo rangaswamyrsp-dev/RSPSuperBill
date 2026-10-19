@@ -4,7 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { HelpCircle, Keyboard, Receipt, Printer, ScanBarcode, Users, Package, Shield, BarChart3 } from "lucide-react";
 
 export const Route = createFileRoute("/_app/help")({
-  head: () => ({ meta: [{ title: "Help & Guide · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Help & Guide · RSP SuperBill" }] }),
   component: HelpPage,
 });
 
@@ -44,7 +44,7 @@ function HelpPage() {
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <HelpCircle className="h-6 w-6 text-primary" /> Help &amp; Guide
         </h1>
-        <p className="text-sm text-muted-foreground">Everything you need to run ANAM Medical Store on RSP Billing.</p>
+        <p className="text-sm text-muted-foreground">Everything you need to run your business on RSP SuperBill.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -72,7 +72,7 @@ function HelpPage() {
       </Card>
 
       <Card className="p-4 bg-[color:var(--info)]/5 border-[color:var(--info)]/30">
-        <div className="font-semibold text-sm">Why use RSP Billing?</div>
+        <div className="font-semibold text-sm">Why use RSP SuperBill?</div>
         <ul className="mt-2 text-sm text-muted-foreground list-disc pl-5 space-y-1">
           <li>Bill in under 20 seconds with barcode / QR scan and keyboard shortcuts.</li>
           <li>Batch-wise inventory with expiry tracking and FEFO deduction — no dead stock.</li>

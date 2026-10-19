@@ -19,9 +19,9 @@ import { useAccount } from "@/lib/account";
 export const Route = createFileRoute("/_app/attendance")({
   head: () => ({
     meta: [
-      { title: "Attendance & Salary · RSP Billing" },
+      { title: "Attendance & Salary · RSP SuperBill" },
       { name: "description", content: "Mark daily staff attendance, track leave and pay monthly salary with bonus and deductions for any business." },
-      { property: "og:title", content: "Attendance & Salary · RSP Billing" },
+      { property: "og:title", content: "Attendance & Salary · RSP SuperBill" },
       { property: "og:description", content: "Daily attendance register and monthly salary payouts for your staff." },
     ],
   }),

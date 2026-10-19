@@ -20,7 +20,7 @@ import { generatePassword, getUser } from "@/lib/auth";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/employees")({
-  head: () => ({ meta: [{ title: "Employees · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Employees · RSP SuperBill" }] }),
   component: EmployeesPage,
 });
 

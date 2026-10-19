@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LOOSE_UNITS } from "@/lib/business";
 import {
-  UtensilsCrossed, Search, Plus, Minus, Trash2, Printer, ChevronLeft, ChevronRight, Receipt,
+  UtensilsCrossed, Search, ScanBarcode, Plus, Minus, Trash2, Printer, ChevronLeft, ChevronRight, Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +19,9 @@ import { printReceipt } from "@/lib/print";
 export const Route = createFileRoute("/_app/")({
   head: () => ({
     meta: [
-      { title: "Billing · RSP Billing Software" },
+      { title: "Billing · RSP SuperBill" },
       { name: "description", content: "Tap an item to bill it. Instant totals, cash or UPI payment, and fast thermal receipt printing." },
-      { property: "og:title", content: "Billing · RSP Billing Software" },
+      { property: "og:title", content: "Billing · RSP SuperBill" },
       { property: "og:description", content: "Fast billing with instant totals and one-tap receipt printing." },
     ],
   }),
@@ -36,7 +37,8 @@ function BillingPage() {
   const menuItems = useStore((s) => s.menuItems);
   const printer = useStore((s) => s.printer);
   const { labels } = useAccount();
-  const photoMode = true;
+  const photoMode = labels.billingMode === "photo";
+  const scanRef = useRef<HTMLInputElement>(null);
   const [me, setMe] = useState<ReturnType<typeof getUser>>(null);
   useEffect(() => setMe(getUser()), []);
 
@@ -64,7 +66,7 @@ function BillingPage() {
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
     return available.filter(
-      (m) => (cat === "All" || m.category === cat) && (!t || m.name.toLowerCase().includes(t)),
+      (m) => (cat === "All" || m.category === cat) && (!t || m.name.toLowerCase().includes(t) || (m.barcode ?? "") === q.trim()),
     );
   }, [available, cat, q]);
 
@@ -84,6 +86,7 @@ function BillingPage() {
       }
       return [...prev, { item, qty: 1 }];
     });
+    if (!photoMode) setTimeout(() => scanRef.current?.focus(), 0);
   };
   const setQty = (id: string, delta: number) =>
     setLines((prev) =>
@@ -151,15 +154,21 @@ function BillingPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {photoMode ? <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /> : <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />}
               <Input
+                ref={scanRef}
                 autoFocus={!photoMode}
-                className="pl-9 w-44"
-                placeholder="Search item"
+                className={photoMode ? "pl-9 w-44" : "pl-9 w-64 h-11 text-base"}
+                placeholder={photoMode ? "Search item" : "Scan barcode or type name"}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && filtered[0]) { add(filtered[0]); setQ(""); }
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  const code = q.trim();
+                  const hit = available.find((m) => m.barcode && m.barcode === code) ?? filtered[0];
+                  if (hit) { add(hit); setQ(""); }
+                  else if (code) { toast.error(`No item for "${code}"`); setQ(""); }
                 }}
               />
             </div>
@@ -191,7 +200,7 @@ function BillingPage() {
                 <div className="p-2.5">
                   <div className="text-sm font-medium truncate" title={m.name}>{m.name}</div>
                   <div className="mt-0.5 flex items-center justify-between">
-                    <span className="text-sm font-semibold">₹{m.price}</span>
+                    <span className="text-sm font-semibold">₹{m.price}<span className="text-xs font-normal text-muted-foreground">/{m.size || m.unit || "pcs"}</span></span>
                     <Badge variant="secondary" className="text-[10px]">{m.category}</Badge>
                   </div>
                 </div>
@@ -266,18 +275,29 @@ function BillingPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{l.item.name}</div>
-                  <div className="text-xs text-muted-foreground">₹{l.item.price} × {l.qty}</div>
+                  <div className="text-xs text-muted-foreground">₹{l.item.price}/{l.item.unit || "pcs"} × {l.qty} {LOOSE_UNITS.includes(l.item.unit ?? "") ? l.item.unit : ""}</div>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.item.id, -1)}>
                     <Minus className="h-3.5 w-3.5" />
                   </Button>
-                  <span className="w-6 text-center text-sm">{l.qty}</span>
+                  <input
+                    aria-label={`Quantity of ${l.item.name}`}
+                    inputMode="decimal"
+                    className="w-12 rounded border bg-background text-center text-sm h-7"
+                    value={l.qty}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (!Number.isFinite(v) || v < 0) return;
+                      setLines((prev) => prev.map((x) => (x.item.id === l.item.id ? { ...x, qty: v } : x)));
+                    }}
+                    onBlur={() => setLines((prev) => prev.filter((x) => x.qty > 0))}
+                  />
                   <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.item.id, 1)}>
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="w-16 text-right text-sm font-semibold">₹{l.item.price * l.qty}</div>
+                <div className="w-16 text-right text-sm font-semibold">₹{Math.round(l.item.price * l.qty * 100) / 100}</div>
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(l.item.id)}>
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>

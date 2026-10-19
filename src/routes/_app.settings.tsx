@@ -12,7 +12,7 @@ import { printReceipt } from "@/lib/print";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/settings")({
-  head: () => ({ meta: [{ title: "Settings · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Settings · RSP SuperBill" }] }),
   component: SettingsPage,
 });
 

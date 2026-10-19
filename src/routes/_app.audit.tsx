@@ -9,7 +9,7 @@ import { ShieldCheck, Search } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/_app/audit")({
-  head: () => ({ meta: [{ title: "Audit Log · RSP Billing Software" }] }),
+  head: () => ({ meta: [{ title: "Audit Log · RSP SuperBill" }] }),
   component: AuditPage,
 });
 

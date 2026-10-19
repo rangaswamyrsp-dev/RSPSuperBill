@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useStore } from "@/lib/store";
 import { getUser } from "@/lib/auth";
-import { DEFAULT_FEATURES, labelsFor, type FeatureKey, type BusinessType } from "@/lib/business";
+import { DEFAULT_FEATURES, labelsFor, normalizeBusinessType, type FeatureKey, type BusinessType } from "@/lib/business";
 
 /** The account (business) the signed-in user belongs to, plus its enabled features. */
 export function useAccount() {
@@ -10,8 +10,8 @@ export function useAccount() {
   useEffect(() => setMe(getUser()), []);
 
   const account = hotels.find((h) => h.id === me?.hotelId) ?? null;
-  const businessType: BusinessType = account?.businessType ?? "Hotel";
-  const features: FeatureKey[] = account?.features?.length
+  const businessType: BusinessType = normalizeBusinessType(account?.businessType);
+  const features: FeatureKey[] = account?.features
     ? account.features
     : DEFAULT_FEATURES[businessType];
 

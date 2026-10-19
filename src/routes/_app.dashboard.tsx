@@ -17,9 +17,9 @@ import { useAccount } from "@/lib/account";
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard · RSP Billing Software" },
+      { title: "Dashboard · RSP SuperBill" },
       { name: "description", content: "Today's sales, bills, profit and stock summary for your business." },
-      { property: "og:title", content: "Dashboard · RSP Billing Software" },
+      { property: "og:title", content: "Dashboard · RSP SuperBill" },
       { property: "og:description", content: "Daily business summary: sales, bills, income and expenses." },
     ],
   }),
