@@ -1,19 +1,26 @@
 // SaaS auth for RSP SuperBill.
-// 1) Super Admin (us) — creates hotel accounts and hands out User ID + Password.
-// 2) Hotel Admin — the hotel owner, logs in with the User ID we created.
-// 3) Hotel staff (Manager / Cashier / Waiter) — created by the hotel admin in Employees.
-// All data is stored per hotel (hotelId) so one hotel never sees another hotel's data.
+// 1) Super Admin (us) — creates business accounts and hands out User ID + Password.
+// 2) Business Admin — the shop/hotel owner, logs in with the User ID created.
+// 3) Business staff (Manager / Cashier / Waiter / Pharmacist) — created in Employees.
+// All data is stored per tenant (hotelId/tenantId) so one business never sees another's data.
+
+import { supabase } from "@/lib/supabase";
 
 export type Role = "SuperAdmin" | "Admin" | "Manager" | "Cashier" | "Waiter" | "Pharmacist";
 
 export type AuthUser = {
-  id: string; // "SUPER", hotel id, or employee id
+  id: string; // "SUPER", tenant id, or employee id
   phone: string; // login id
   name: string;
   role: Role;
   store: string; // hotel / business name
-  hotelId: string; // "" for super admin
+  hotelId: string; // "" for super admin, tenantId for businesses
   isMainAdmin?: boolean;
+};
+
+export type LoginResult = {
+  user: AuthUser | null;
+  error?: string;
 };
 
 const KEY = "rsp_auth_user";
@@ -34,6 +41,8 @@ type HotelRecord = {
   password: string;
   ownerName: string;
   active?: boolean;
+  businessType?: string;
+  features?: any;
 };
 
 type EmployeeRecord = {
@@ -57,49 +66,179 @@ function readStore(): { hotels: HotelRecord[]; employees: EmployeeRecord[] } {
   }
 }
 
-export function login(loginId: string, password: string, remember: boolean): AuthUser | null {
-  const u = loginId.trim().toLowerCase();
-  const save = (user: AuthUser) => {
+export async function login(loginId: string, password: string, remember: boolean): Promise<LoginResult> {
+  const u = loginId.trim();
+  const lower = u.toLowerCase();
+
+  const save = (user: AuthUser): LoginResult => {
     (remember ? localStorage : sessionStorage).setItem(KEY, JSON.stringify(user));
-    return user;
+    return { user };
   };
 
-  if (u === SUPER_ADMIN.loginId && password === SUPER_ADMIN.password) {
+  // 1. Super Admin authentication
+  if (lower === SUPER_ADMIN.loginId && password === SUPER_ADMIN.password) {
     return save({
-      id: SUPER_ADMIN.id, phone: SUPER_ADMIN.loginId, name: SUPER_ADMIN.name,
-      role: "SuperAdmin", store: "RSP Software", hotelId: "", isMainAdmin: true,
+      id: SUPER_ADMIN.id,
+      phone: SUPER_ADMIN.loginId,
+      name: SUPER_ADMIN.name,
+      role: "SuperAdmin",
+      store: "RSP Software",
+      hotelId: "",
+      isMainAdmin: true,
     });
   }
 
+  // 2. Authenticate against Supabase Database
+  try {
+    // Try server-side secure auth RPC first
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc("superbill_auth_login", {
+      p_login: u,
+      p_password: password,
+    });
+
+    if (!rpcErr && rpcRes) {
+      if (rpcRes.success && rpcRes.user) {
+        // Enforce medical billing separation on RPC response (defense-in-depth)
+        const u = rpcRes.user;
+        const rawFeatures = u.features || {};
+        const isExplicitSuperBill =
+          rawFeatures.superbill === true ||
+          (Array.isArray(rawFeatures.apps) && rawFeatures.apps.includes("superbill"));
+        const isNonMedicalBusiness =
+          u.businessType &&
+          u.businessType.toLowerCase() !== "medical" &&
+          u.businessType.toLowerCase() !== "medical store";
+
+        if (!isExplicitSuperBill && !isNonMedicalBusiness) {
+          return {
+            user: null,
+            error:
+              "Unauthorized: This account is registered for RSP Medical Billing only and is not provisioned for RSP SuperBill. Please contact RSP Super Admin.",
+          };
+        }
+
+        return save({
+          id: rpcRes.user.id,
+          phone: rpcRes.user.phone,
+          name: rpcRes.user.name,
+          role: "Admin",
+          store: rpcRes.user.store,
+          hotelId: rpcRes.user.hotelId,
+          isMainAdmin: true,
+        });
+      } else if (!rpcRes.success) {
+        return { user: null, error: rpcRes.message || "Login failed." };
+      }
+    }
+
+    // Direct database query fallback (if RPC migration not yet executed)
+    const { data: tenants, error: tErr } = await supabase
+      .from("tenants")
+      .select("*")
+      .or(`admin_phone.eq.${u},id.eq.${u}`)
+      .limit(1);
+
+    if (!tErr && tenants && tenants.length > 0) {
+      const tenant = tenants[0];
+
+      // Password verification
+      if (tenant.admin_password !== password) {
+        return { user: null, error: "Invalid password for this account." };
+      }
+
+      // Check account activation
+      if (tenant.active === false) {
+        return { user: null, error: "This business account has been suspended. Please contact Super Admin." };
+      }
+
+      // CRITICAL AUTHORIZATION REQUIREMENT:
+      // Separate RSP SuperBill from RSP Medical Billing:
+      // A medical shop owner registered in RSP Medical Billing must NOT automatically
+      // be able to log in to RSP SuperBill unless explicitly authorized and provisioned.
+      const rawFeatures = tenant.features || {};
+      const isExplicitSuperBill =
+        rawFeatures.superbill === true ||
+        (Array.isArray(rawFeatures.apps) && rawFeatures.apps.includes("superbill"));
+
+      const isNonMedicalBusiness =
+        tenant.type &&
+        tenant.type.toLowerCase() !== "medical" &&
+        tenant.type.toLowerCase() !== "medical store";
+
+      const isAuthorizedForSuperBill = isExplicitSuperBill || isNonMedicalBusiness;
+
+      if (!isAuthorizedForSuperBill) {
+        return {
+          user: null,
+          error:
+            "Unauthorized: This account is registered for RSP Medical Billing only and is not provisioned for RSP SuperBill. Please contact RSP Super Admin.",
+        };
+      }
+
+      return save({
+        id: tenant.id,
+        phone: tenant.admin_phone || tenant.id,
+        name: tenant.admin_name || tenant.name,
+        role: "Admin",
+        store: tenant.name,
+        hotelId: tenant.id,
+        isMainAdmin: true,
+      });
+    }
+  } catch (err) {
+    console.warn("Supabase auth check error, falling back:", err);
+  }
+
+  // 3. Fallback / local store check (for employees or demo accounts)
   const { hotels, employees } = readStore();
 
   const hotel = hotels.find(
-    (h) => h.loginId?.trim().toLowerCase() === u && h.password === password && (h.active ?? true),
+    (h) => (h.loginId?.trim().toLowerCase() === lower || h.id?.toLowerCase() === lower) && h.password === password && (h.active ?? true),
   );
   if (hotel) {
+    // Check medical isolation for local accounts too
+    const isMed = hotel.businessType === "Medical Store" || (hotel as any).businessType === "Medical";
+    const hasSuperBill = (hotel.features as any)?.superbill === true || !isMed;
+    if (!hasSuperBill) {
+      return {
+        user: null,
+        error: "Unauthorized: This account is registered for RSP Medical Billing only.",
+      };
+    }
+
     return save({
-      id: hotel.id, phone: hotel.loginId, name: hotel.ownerName || hotel.name,
-      role: "Admin", store: hotel.name, hotelId: hotel.id, isMainAdmin: true,
+      id: hotel.id,
+      phone: hotel.loginId,
+      name: hotel.ownerName || hotel.name,
+      role: "Admin",
+      store: hotel.name,
+      hotelId: hotel.id,
+      isMainAdmin: true,
     });
   }
 
   const emp = employees.find(
-    (e) => e.phone?.trim().toLowerCase() === u && (e.password ?? "") === password && (e.active ?? true),
+    (e) => e.phone?.trim().toLowerCase() === lower && (e.password ?? "") === password && (e.active ?? true),
   );
   if (emp) {
     const hotelId = emp.hotelId ?? hotels[0]?.id ?? "H001";
     const h = hotels.find((x) => x.id === hotelId);
     return save({
-      id: emp.id, phone: emp.phone, name: emp.name, role: normalizeRole(emp.role),
-      store: h?.name ?? "My Hotel", hotelId,
+      id: emp.id,
+      phone: emp.phone,
+      name: emp.name,
+      role: normalizeRole(emp.role),
+      store: h?.name ?? "My Business",
+      hotelId,
     });
   }
-  return null;
+
+  return { user: null, error: "Invalid phone (User ID) or password." };
 }
 
 function normalizeRole(r: string): Role {
   const x = (r || "").toLowerCase();
-  if (x.includes("super")) return "Manager"; // never grant super admin from employees
+  if (x.includes("super")) return "Manager";
   if (x.includes("admin")) return "Admin";
   if (x.includes("manag")) return "Manager";
   if (x.includes("wait") || x.includes("steward")) return "Waiter";
@@ -170,4 +309,4 @@ export const CAN: Record<Role, {
 };
 
 export const DEMO_CREDENTIALS = { phone: SUPER_ADMIN.loginId, password: SUPER_ADMIN.password };
-export const HOTEL_DEMO = { loginId: "vaishali", password: "hotel@2026" };
+export const HOTEL_DEMO = { loginId: "8885848601", password: "RSP123" };

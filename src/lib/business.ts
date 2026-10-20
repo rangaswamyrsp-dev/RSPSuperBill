@@ -11,14 +11,23 @@ export type BusinessType =
   | "Bakery / Sweets"
   | "Bar & Restaurant"
   | "Supermarket"
+  | "Grocery Store"
   | "Kirana Store"
   | "General Store"
-  | "Mobile Shop";
+  | "Electronics Shop"
+  | "Mobile Shop"
+  | "Electrical Shop"
+  | "Clothing Store"
+  | "Hardware Shop"
+  | "Paint Shop"
+  | "Medical Store";
 
 export const BUSINESS_TYPES: BusinessType[] = [
   "Hotel", "Restaurant", "Cafe / Coffee Shop", "Small Hotel", "Tiffin Center",
   "Bakery / Sweets", "Bar & Restaurant",
-  "Supermarket", "Kirana Store", "General Store", "Mobile Shop",
+  "Supermarket", "Grocery Store", "Kirana Store", "General Store",
+  "Electronics Shop", "Mobile Shop", "Electrical Shop", "Clothing Store",
+  "Hardware Shop", "Paint Shop", "Medical Store",
 ];
 
 export type FeatureKey =
@@ -67,9 +76,16 @@ export const DEFAULT_FEATURES: Record<BusinessType, FeatureKey[]> = {
   "Bakery / Sweets": [...BASE, "purchase", "inventory", "customers", "gst", "accounts", "backup", "barcode"],
   "Bar & Restaurant": FULL,
   Supermarket: SHOP,
+  "Grocery Store": SHOP,
   "Kirana Store": SHOP,
   "General Store": SHOP,
+  "Electronics Shop": SHOP,
   "Mobile Shop": SHOP,
+  "Electrical Shop": SHOP,
+  "Clothing Store": SHOP,
+  "Hardware Shop": SHOP,
+  "Paint Shop": SHOP,
+  "Medical Store": [...SHOP],
 };
 
 export type BusinessLabels = {
@@ -87,6 +103,12 @@ const GROCERY = ["Rice & Grains", "Dal & Pulses", "Oil & Ghee", "Spices & Masala
 const MOBILE = ["Mobiles", "Chargers", "Cables", "Earphones", "Covers & Cases", "Screen Guards", "Power Banks",
   "Memory Cards", "Recharge", "Repairs", "Others"];
 const BAKERY = ["Cakes", "Breads", "Biscuits", "Sweets", "Snacks", "Beverages", "Others"];
+const ELECTRONICS = ["TV & Audio", "Kitchen Appliances", "Cooling & Heating", "Small Appliances", "Laptops & Computers", "Cables & Accs", "Others"];
+const ELECTRICAL = ["Wires & Cables", "Switches & Sockets", "LED & Lighting", "Fans", "MCB & Distribution", "Pipes & Fittings", "Batteries & Inverters", "Others"];
+const CLOTHING = ["Men's Wear", "Women's Wear", "Kids & Boys", "Girls Wear", "Sarees & Ethnic", "Innerwear", "Fabrics", "Accessories", "Others"];
+const HARDWARE = ["Fasteners & Screws", "Hand Tools", "Power Tools", "Plumbing", "Door Fittings", "Adhesives & Tapes", "Locks & Keys", "Safety & Security", "Others"];
+const PAINT = ["Interior Paint", "Exterior Paint", "Enamel & Gloss", "Primer & Putty", "Waterproofing", "Brushes & Rollers", "Thinners & Solvents", "Spray Paints", "Others"];
+const MEDICAL = ["Tablets & Capsules", "Syrups & Suspensions", "Injections", "Ointments & Creams", "Drops & Sprays", "Surgical & First Aid", "Baby Care", "Health Supplements", "Others"];
 
 const food = (itemsOne = "dish"): BusinessLabels =>
   ({ items: "Menu Items", itemsOne, bill: "Bill", billingMode: "photo", categories: FOOD });
@@ -102,9 +124,16 @@ export const BUSINESS_LABELS: Record<BusinessType, BusinessLabels> = {
   "Bakery / Sweets": { ...food("item"), categories: BAKERY },
   "Bar & Restaurant": food("item"),
   Supermarket: shop(GROCERY),
+  "Grocery Store": shop(GROCERY),
   "Kirana Store": shop(GROCERY),
   "General Store": shop(GROCERY),
+  "Electronics Shop": shop(ELECTRONICS),
   "Mobile Shop": shop(MOBILE),
+  "Electrical Shop": shop(ELECTRICAL),
+  "Clothing Store": shop(CLOTHING),
+  "Hardware Shop": shop(HARDWARE),
+  "Paint Shop": shop(PAINT),
+  "Medical Store": shop(MEDICAL),
 };
 
 export function labelsFor(type?: BusinessType | string): BusinessLabels {
@@ -114,8 +143,11 @@ export function labelsFor(type?: BusinessType | string): BusinessLabels {
 /** Old / unknown business types fall back to a close match. */
 export function normalizeBusinessType(t?: string): BusinessType {
   if ((BUSINESS_TYPES as string[]).includes(t ?? "")) return t as BusinessType;
-  if (t === "Retail" || t === "Medical" || t === "Other") return "General Store";
+  if (t === "Retail" || t === "General" || t === "Other") return "General Store";
   if (t === "Bakery") return "Bakery / Sweets";
+  if (t === "Medical") return "Medical Store";
+  if (t === "Kirana") return "Kirana Store";
+  if (t === "Grocery") return "Grocery Store";
   return "Hotel";
 }
 

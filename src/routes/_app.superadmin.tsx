@@ -81,7 +81,7 @@ function SuperAdminPage() {
 
   const create = () => {
     if (!form.name.trim() || !form.loginId.trim() || !form.password.trim()) {
-      toast.error("Hotel name, User ID and Password are required");
+      toast.error("Business name, User ID and Password are required");
       return;
     }
     const id = form.loginId.trim().toLowerCase();
@@ -113,7 +113,7 @@ function SuperAdminPage() {
         <Card className="p-6 max-w-lg">
           <h1 className="text-lg font-semibold">Super Admin only</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This console is used by RSP Software to create and manage hotel accounts.
+            This console is used by RSP Software to create and manage business accounts.
           </p>
         </Card>
       </div>
@@ -135,7 +135,7 @@ function SuperAdminPage() {
 
         </div>
         <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> New hotel account
+          <Plus className="h-4 w-4 mr-1" /> New business account
         </Button>
       </div>
 

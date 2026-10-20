@@ -33,22 +33,27 @@ function PurchasePage() {
   const total = rows.reduce((n, r) => n + r.qty * r.rate * (1 + r.gst / 100), 0);
 
   const save = () => {
-    if (!supplier || !invoiceNo) return toast.error("Supplier & invoice no. required");
-    const valid = rows.filter((r) => r.name && r.batch && r.qty > 0);
-    if (valid.length === 0) return toast.error("Add at least one item");
+    if (!supplier.trim() || !invoiceNo.trim()) return toast.error("Supplier & invoice no. required");
+    const valid = rows
+      .filter((r) => r.name.trim() && r.qty > 0)
+      .map((r) => ({
+        ...r,
+        name: r.name.trim(),
+        batch: r.batch?.trim() || "STANDARD",
+      }));
+    if (valid.length === 0) return toast.error("Add at least one item with valid quantity");
     actions.addPurchase({
       date: new Date().toISOString().slice(0, 10),
-      supplier, invoiceNo, items: valid,
+      supplier: supplier.trim(),
+      invoiceNo: invoiceNo.trim(),
+      items: valid,
       total: Math.round(total),
     });
-    // also add/update medicines stock
-    valid.forEach((r) => actions.addMedicine({
-      name: r.name, batch: r.batch, mrp: Math.round(r.rate * 1.4),
-      gst: r.gst, stock: r.qty, expiry: "", company: supplier,
-    }));
     toast.success("Purchase recorded & stock updated");
     setOpen(false);
-    setSupplier(""); setInvoiceNo(""); setRows([EMPTY_ROW]);
+    setSupplier("");
+    setInvoiceNo("");
+    setRows([EMPTY_ROW]);
   };
 
   return (

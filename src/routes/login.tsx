@@ -30,20 +30,23 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      const u = login(phone, password, remember);
+    try {
+      const res = await login(phone, password, remember);
       setLoading(false);
-      if (u) {
-        actions.logLogin({ id: u.id, name: u.name });
-        toast.success(`Welcome, ${u.name} · ${u.role}`);
+      if (res.user) {
+        actions.logLogin({ id: res.user.id, name: res.user.name });
+        toast.success(`Welcome, ${res.user.name} · ${res.user.role}`);
         navigate({ to: "/" });
       } else {
-        toast.error("Invalid phone or password");
+        toast.error(res.error || "Invalid phone or password");
       }
-    }, 300);
+    } catch (err: any) {
+      setLoading(false);
+      toast.error(err?.message || "Login request failed");
+    }
   };
 
   return (
@@ -55,7 +58,7 @@ function LoginPage() {
           </div>
           <div>
             <div className="text-lg font-semibold">RSP SuperBill</div>
-            <div className="text-xs text-white/70">your business · Hindupur</div>
+            <div className="text-xs text-white/70">your business </div>
           </div>
         </div>
 
@@ -64,11 +67,10 @@ function LoginPage() {
           <div className="absolute top-32 right-0 h-56 w-56 rounded-full bg-[color:var(--warning)]/40 blur-3xl" />
           <div className="relative">
             <h1 className="text-4xl xl:text-5xl font-semibold leading-tight tracking-tight">
-              Role-based billing for your whole team.
+              RSP SuperBill Softwares
             </h1>
             <p className="mt-4 text-white/80 max-w-md">
-              Admin, Manager, Pharmacist and Cashier — each staff logs in with their phone number
-              and every bill is tied to their Employee ID.
+              Super market, General Store, Kirana Store, Restaurant, Hotel & Electronics Shop billing software.
             </p>
             <div className="mt-10 grid grid-cols-3 gap-3 max-w-md">
               {[
@@ -141,11 +143,7 @@ function LoginPage() {
             </Button>
           </form>
 
-          <Card className="mt-6 p-3 bg-muted/50 border-dashed text-xs text-muted-foreground">
-            <div><span className="font-medium text-foreground">Admin demo:</span> {DEMO_CREDENTIALS.phone} · {DEMO_CREDENTIALS.password}</div>
-            <div className="mt-1"><span className="font-medium text-foreground">Cashier demo:</span> 9876543211 · cashier1</div>
-            <div><span className="font-medium text-foreground">Pharmacist demo:</span> 9876543212 · pharma1</div>
-          </Card>
+
 
           <p className="mt-6 text-center text-xs text-muted-foreground">Version 1.1</p>
         </div>

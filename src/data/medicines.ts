@@ -7,6 +7,13 @@ export type Medicine = {
   stock: number;
   expiry: string;
   company: string;
+  cost?: number;
+  category?: string;
+  code?: string;
+  units?: string;
+  pack?: string;
+  rack?: string;
+  minStock?: number;
 };
 
 export const MEDICINES: Medicine[] = [
